@@ -5,7 +5,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "../include/models.h"
-#include <netinet/in.h>    /* For AFINET sockets */
+#include <netinet/in.h>    /* For AF_INET sockets */
+
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
 int main()
@@ -43,7 +44,7 @@ int main()
             printf("Connesso\n");
 
             MessageHeader h;
-            ssize_t bytesRead = read(clientFD, &h, sizeof(h)); // per controllare se la lettura ha avuto successo
+            ssize_t bytesRead = read(clientFD, &h, sizeof(h)); 
             if (bytesRead > 0)
             {
                 printf("%d\n", ntohs(h.commandId)); // Assuming commandId is int

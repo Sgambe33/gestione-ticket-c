@@ -38,9 +38,9 @@ typedef struct
     char description[2048];
     time_t creationDate;
     enum Priority priority;
-    enum Stato state;
-    Utente creator;
-    Utente assignedAgent;
+    enum State state;
+    User creator;
+    User assignedAgent;
 } Ticket;
 
 typedef struct
