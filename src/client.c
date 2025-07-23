@@ -36,11 +36,11 @@ int main(void)
 
     char msg[] = "Hello world";
 
-    Utente ciccio;
-    strcpy(ciccio.nome, "Rosario");
-    strcpy(ciccio.cognome, "Pugliese");
+    User ciccio;
+    strcpy(ciccio.name, "Rosario");
+    strcpy(ciccio.surname, "Pugliese");
     strcpy(ciccio.email, "email@gmail.com");
-    ciccio.ruolo = STANDARD;
+    ciccio.role = STANDARD;
 
     MessageHeader mh;
     mh.commandId = htons(1);
