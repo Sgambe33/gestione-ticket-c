@@ -142,7 +142,7 @@ i         -> 4–7 ✅ allineato
 
 ## Ticket
 ```c
-enum Priorita {
+enum Priority {
   BASSA, MEDIA, ALTA
 }
 
@@ -155,7 +155,7 @@ typedef struct {
   char titolo[64];
   char descrizione[2048];
   time_t dataCreazione;
-  Priorita priorita;
+  Priority Priority;
   Stato stato;
   Utente creatore;
   Utente agenteAssegnato;
