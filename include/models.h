@@ -1,0 +1,50 @@
+#include <time.h>
+#include <stdint.h>
+
+enum Priority
+{
+    LOW,
+    MEDIUM,
+    HIGH
+};
+
+enum State
+{
+    CLOSED,
+    ASSIGNED,
+    OPEN
+};
+
+typedef enum
+{
+    STANDARD,
+    AGENT,
+    SUPER_AGENT
+} Role;
+
+typedef struct
+{
+    char name[32];
+    char surname[32];
+    char email[64];
+    char password[16];
+    Role role;
+} __attribute__((packed)) User;
+
+typedef struct
+{
+    int id;
+    char title[64];
+    char description[2048];
+    time_t creationDate;
+    enum Priority priority;
+    enum Stato state;
+    Utente creator;
+    Utente assignedAgent;
+} Ticket;
+
+typedef struct
+{
+    uint16_t commandId;   // 2 bytes
+    uint32_t payloadSize; // 4 bytes
+} __attribute__((packed)) MessageHeader;
