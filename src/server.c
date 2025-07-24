@@ -64,12 +64,24 @@ void handleClient(int socket)
 
         switch (ntohs(req.commandId))
         {
-        case 1: { // login
-            char password[16];
-            ssize_t emailBytesRead = read(socket, email, sizeof(email));
-            ssize_t passwordBytesRead = read(socket, password, sizeof(password));
-            if (emailBytesRead > 0 && passwordBytesRead > 0)
+        case 1:
+        { // login
+            int payloadSize = ntohl(req.payloadSize);
+            char test[payloadSize ];
+            ssize_t emailBytesRead = read(socket, test, payloadSize);
+            if (emailBytesRead > 0)
             {
+                // strtok divide la stringa in base al delimitatore. Inserisce \0 dove trova il delimitatore e
+                // restituisce un puntatore all'inizio della stringa (adesso divisa). Al suo interno comunque mantiene un 
+                // riferimento all'ultima posizione in cui il delimitatore è stato trovato.
+                // Quindi, se si chiama di nuovo strtok con lo stesso puntatore, riprende da dove aveva lasciato.
+                // Vedi https://stackoverflow.com/a/21097376
+                char *email = strtok(test, "\n");
+                char *password = strtok(NULL, "\n");
+
+                printf("Email: %s\n", email ? email : "(null)");
+                printf("Password: %s\n", password ? password : "(null)");
+
                 // TODO: Authenticate user
                 res = (ResponseHeader){htons(200), htonl(0), "Autenticazione avvenuta"};
                 write(socket, &res, sizeof(res));
@@ -81,16 +93,20 @@ void handleClient(int socket)
             }
             break;
         }
-        case 2: { // create ticket
+        case 2:
+        { // create ticket
             Ticket toCreate;
             ssize_t ticketBytesRead = read(socket, &toCreate, sizeof(toCreate));
             if (ticketBytesRead > 0)
             {
                 // TODO: Save to DB and check result
                 int success = 1; // Replace with actual DB result
-                if (success) {
+                if (success)
+                {
                     res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
-                } else {
+                }
+                else
+                {
                     res = (ResponseHeader){htons(500), htonl(0), "Errore nella creazione del ticket"};
                 }
                 write(socket, &res, sizeof(res));
@@ -102,7 +118,8 @@ void handleClient(int socket)
             }
             break;
         }
-        case 3: { // get tickets
+        case 3:
+        { // get tickets
             ssize_t emailBytesRead = read(socket, email, sizeof(email));
             if (emailBytesRead > 0)
             {
@@ -160,7 +177,7 @@ int main()
 
     while (1)
     {
-        clientFD = accept(serverFD, clientSockAddrPtr, &clientLen);
+        clientFD = accept(serverFD, (struct sockaddr *)&clientINETAddress, &clientLen);
         if (clientFD < 0)
         {
             perror("accept");
@@ -168,23 +185,13 @@ int main()
         }
         if (fork() == 0)
         {
-            printf("Connesso\n");
-            handleClient(clientFD);
+            printf("New client connected\n");
+            // Print the client IP
+            char clientIp[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &clientINETAddress.sin_addr, clientIp, INET_ADDRSTRLEN);
+            printf("Client IP: %s\n", clientIp);
 
-            // size_t payloadSize = ntohl(h.payloadSize);
-            // if (payloadSize > 0 && payloadSize < 4096) // sanity check
-            // {
-            //     char msg[payloadSize];
-            //     ssize_t payloadBytesRead = read(clientFD, msg, payloadSize);
-            //     if (payloadBytesRead > 0)
-            //     {
-            //         printf("%s\n", msg);
-            //     }
-            //     else
-            //     {
-            //         perror("read");
-            //     }
-            // }
+            handleClient(clientFD);
             close(clientFD);
             exit(0);
         }
@@ -193,4 +200,27 @@ int main()
             close(clientFD);
         }
     }
+
+    // size_t payloadSize = ntohl(h.payloadSize);
+    // if (payloadSize > 0 && payloadSize < 4096) // sanity check
+    // {
+    //     char msg[payloadSize];
+    //     ssize_t payloadBytesRead = read(clientFD, msg, payloadSize);
+    //     if (payloadBytesRead > 0)
+    //     {
+    //         printf("%s\n", msg);
+    //     }
+    //     else
+    //     {
+    //         perror("read");
+    //     }
+    // }
+    //     close(clientFD);
+    //     exit(0);
+    // }
+    // else
+    // {
+    //     close(clientFD);
+    // }
+    //}
 }
