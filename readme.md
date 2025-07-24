@@ -37,6 +37,38 @@ In particolare deve modificare il database in seguito a:
 - gestione di ticket da parte degli agenti:
   - inserisce nel DB le modifiche effettuate ai ticket
 
+ * The server handles the following commands:
+ * 1) login
+ * 2) create ticket
+ * 3) get ticket
+ * 4) update ticket
+ *
+ * Each command has a specific payload structure and response format.
+ *
+ * Command structure:
+ * RequestHeader(commandId, payloadSize)
+ * Payload (depends on command)
+ *
+ * Response structure:
+ * ResponseHeader(statusCode, payloadSize, message)
+
+1) login: payload = email + password
+    Success: ResponseHeader(200, msg="Autenticazione avvenuta", payloadSize=0)
+    Failure: ResponseHeader(401, msg="Autenticazione fallita", payloadSize=0)
+
+2) create ticket: payload = Ticket
+    Success: ResponseHeader(201, msg="Ticket creato con successo", payloadSize=0)
+    Failure: ResponseHeader(500, msg="Errore nella creazione del ticket", payloadSize=0)
+
+3) get tickets: payload = User ID
+    Success: ResponseHeader(200, msg="Lista dei ticket", payloadSize=sizeof(Ticket)*n)
+    Failure: ResponseHeader(404, msg="Errore nel recupero dei ticket", payload)Size=0)
+
+4) update ticket: payload = Ticket
+    Success: ResponseHeader(200, msg="Ticket aggiornato con successo", payloadSize=0)
+    Failure: ResponseHeader(500, msg="Errore nell'aggiornamento del ticket", payloadSize=0)
+*/
+
 # Comunicazione Client-Server
 
 typedef struct {

@@ -47,4 +47,11 @@ typedef struct
 {
     uint16_t commandId;   // 2 bytes
     uint32_t payloadSize; // 4 bytes
-} __attribute__((packed)) MessageHeader;
+} __attribute__((packed)) RequestHeader;
+
+typedef struct
+{
+    uint16_t statusCode;  // 2 bytes
+    uint32_t payloadSize; // 4 bytes
+    char message[128];    // 128 bytes
+} __attribute__((packed)) ResponseHeader;
