@@ -15,7 +15,7 @@ void sendRequest(int socket, RequestHeader *req, void *payload)
     ssize_t bytesWritten = write(socket, req, sizeof(*req));
     if (bytesWritten < 0)
     {
-        perror("write");
+        perror("write header");
         return;
     }
     if (payload != NULL)
@@ -24,6 +24,26 @@ void sendRequest(int socket, RequestHeader *req, void *payload)
         if (bytesWritten < 0)
         {
             perror("write payload");
+            return;
+        }
+    }
+}
+
+void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
+{
+    ssize_t bytesRead = read(socket, resp, sizeof(*resp));
+    if (bytesRead < 0)
+    {
+        perror("read header");
+        return;
+    }
+    uint32_t payloadSize = ntohl(resp->payloadSize);
+    if (payloadSize > 0 && payloadBuffer != NULL)
+    {
+        bytesRead = read(socket, payloadBuffer, payloadSize);
+        if (bytesRead < 0)
+        {
+            perror("read payload");
             return;
         }
     }
@@ -54,22 +74,6 @@ int main(void)
     } while (result == -1);
     printf("\nConnesso");
 
-    char email[] = "email@gmail.com";
-    char password[] = "password1234";
-    char loginPayload[sizeof(email) + sizeof(password) + 1]; //+1 for newline
-
-    snprintf(loginPayload, sizeof(loginPayload), "%s\n%s", email, password);
-
-    //Example: login request
-    RequestHeader req;
-    req.commandId = htons(1);
-    req.payloadSize = htonl(sizeof(loginPayload));
-
-    sendRequest(clientFD, &req, loginPayload);
-
-    while(1){
-        sleep(100);
-    }
 
     close(clientFD);
     exit(0);
