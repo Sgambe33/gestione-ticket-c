@@ -10,6 +10,25 @@
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
+void sendRequest(int socket, RequestHeader *req, void *payload)
+{
+    ssize_t bytesWritten = write(socket, req, sizeof(*req));
+    if (bytesWritten < 0)
+    {
+        perror("write");
+        return;
+    }
+    if (payload != NULL)
+    {
+        bytesWritten = write(socket, payload, ntohl(req->payloadSize));
+        if (bytesWritten < 0)
+        {
+            perror("write payload");
+            return;
+        }
+    }
+}
+
 int main(void)
 {
     int clientFD, serverLen, result;
@@ -35,21 +54,22 @@ int main(void)
     } while (result == -1);
     printf("\nConnesso");
 
-    // Attempt to read from the server
-    char msg[] = "Hello world";
+    char email[] = "email@gmail.com";
+    char password[] = "password1234";
+    char loginPayload[sizeof(email) + sizeof(password) + 1]; //+1 for newline
 
-    User ciccio;
-    strcpy(ciccio.name, "Rosario");
-    strcpy(ciccio.surname, "Pugliese");
-    strcpy(ciccio.email, "email@gmail.com");
-    ciccio.role = STANDARD;
+    snprintf(loginPayload, sizeof(loginPayload), "%s\n%s", email, password);
 
-    MessageHeader mh;
-    mh.commandId = htons(1);
-    mh.payloadSize = htonl(sizeof(ciccio));
+    //Example: login request
+    RequestHeader req;
+    req.commandId = htons(1);
+    req.payloadSize = htonl(sizeof(loginPayload));
 
-    write(clientFD, &mh, sizeof(mh));
-    write(clientFD, &ciccio, sizeof(ciccio));
+    sendRequest(clientFD, &req, loginPayload);
+
+    while(1){
+        sleep(100);
+    }
 
     close(clientFD);
     exit(0);
