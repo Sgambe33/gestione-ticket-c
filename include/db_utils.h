@@ -3,6 +3,7 @@
 #define MAX_TICKET_COUNT 100
 
 void getUserList(Role role);
+User getUser(char email[]);
 void getTicketList(char email[]);
 int updateTicket(Ticket *ticket);
 int createTicket(Ticket* ticket);

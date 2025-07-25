@@ -1,4 +1,4 @@
-#include "../include/db_utils.h"
+#include "../../include/db_utils.h"
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +14,6 @@ Ticket ticketList[MAX_TICKET_COUNT];
 int userCount = 0;
 int ticketCount = 0;
 
-// service functions
 static int callback(void *NotUsed, int argc, char **argv, char **azColName)
 {
     int i;
@@ -69,7 +68,6 @@ static int callbackTicket(void *NotUsed, int argc, char **argv, char **azColName
     return 0;
 }
 
-// functions to manage the database
 int createDb()
 {
     int result = open("tickets.db", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -82,6 +80,8 @@ int createDb()
 
 int createTables()
 {
+    commandResult = sqlite3_open("tickets.db", &db);
+
     char *sql;
 
     sql = "CREATE TABLE IF NOT EXISTS \"User\" ("
@@ -149,6 +149,29 @@ int createTicket(Ticket *ticket)
     return commandResult;
 }
 
+User getUser(char email[])
+{
+    User user;
+    char sql[256];
+    snprintf(sql, sizeof(sql), "SELECT * FROM User WHERE email = \"%s\";", email);
+    
+    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &zErrMsg);
+
+    if (commandResult != SQLITE_OK)
+    {
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+        return user;
+    }
+
+    if (userCount > 0)
+    {
+        return userList[0];
+    }
+    
+    return user;
+}
+
 void getUserList(Role role)
 {
     memset(userList, 0, sizeof(userList));
@@ -189,7 +212,6 @@ void getTicketList(char email[])
     }
 }
 
-// update by priority, state and assignedAgent
 int updateTicket(Ticket *ticket)
 {
     char sql[512];
