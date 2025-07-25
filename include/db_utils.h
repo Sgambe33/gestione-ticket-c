@@ -1,7 +1,10 @@
 #include "models.h"
+#define MAX_USER_COUNT 100
+#define MAX_TICKET_COUNT 100
 
-User* getUserList(Role role);
-Ticket* getTicketList();
-int updateTicket();
+void getUserList(Role role);
+void getTicketList(char email[]);
+int updateTicket(Ticket *ticket);
+int createTicket(Ticket* ticket);
 int createDb();
 int createTables();
