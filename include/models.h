@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdint.h>
+#pragma once
 
 enum Priority
 {
