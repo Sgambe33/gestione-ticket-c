@@ -74,6 +74,20 @@ int main(void)
     } while (result == -1);
     printf("\nConnesso");
 
+    char emailPwd[] = "alice@example.com\npass1";
+    sendRequest(clientFD, &(RequestHeader){htons(1), htonl(sizeof(emailPwd))}, emailPwd);
+
+    ResponseHeader resp;
+    User user;
+    receiveResponse(clientFD, &resp, &user);
+    if (ntohs(resp.statusCode) == 200)
+    {
+        printf("\nBenvenuto/a %s!\n", user.name);
+    }
+    else
+    {
+        printf("\n%s\n", resp.message);
+    }
 
     close(clientFD);
     exit(0);

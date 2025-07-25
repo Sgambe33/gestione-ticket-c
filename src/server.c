@@ -6,7 +6,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "../include/models.h"
-#include <netinet/in.h> /* For AF_INET sockets */
+#include "../include/db_utils.h"
+#include <netinet/in.h>
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
@@ -43,7 +44,6 @@
     Failure: ResponseHeader(500, msg="Errore nell'aggiornamento del ticket", payloadSize=0)
 */
 
-
 void handleClient(int socket)
 {
     ResponseHeader res;
@@ -54,7 +54,7 @@ void handleClient(int socket)
         ssize_t bytesRead = read(socket, &req, sizeof(req));
         if (bytesRead <= 0)
         {
-            perror("read");
+            perror("read serv");
             break; // Exit loop on error or disconnect
         }
 
@@ -67,31 +67,33 @@ void handleClient(int socket)
         case 1:
         { // login
             int payloadSize = ntohl(req.payloadSize);
-            char test[payloadSize ];
+            char test[payloadSize];
             ssize_t emailBytesRead = read(socket, test, payloadSize);
             if (emailBytesRead > 0)
             {
                 // strtok divide la stringa in base al delimitatore. Inserisce \0 dove trova il delimitatore e
-                // restituisce un puntatore all'inizio della stringa (adesso divisa). Al suo interno comunque mantiene un 
+                // restituisce un puntatore all'inizio della stringa (adesso divisa). Al suo interno comunque mantiene un
                 // riferimento all'ultima posizione in cui il delimitatore è stato trovato.
                 // Quindi, se si chiama di nuovo strtok con lo stesso puntatore, riprende da dove aveva lasciato.
                 // Vedi https://stackoverflow.com/a/21097376
                 char *email = strtok(test, "\n");
                 char *password = strtok(NULL, "\n");
 
-                printf("Email: %s\n", email ? email : "(null)");
-                printf("Password: %s\n", password ? password : "(null)");
-
-                // TODO: Authenticate user
-                res = (ResponseHeader){htons(200), htonl(0), "Autenticazione avvenuta"};
-                write(socket, &res, sizeof(res));
+                User dbUser = getUser(email);                
+                
+                if (strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0)
+                {
+                    res = (ResponseHeader){htons(200), htonl(sizeof(dbUser)), "Autenticazione avvenuta"};
+                    write(socket, &res, sizeof(res));
+                    write(socket, &dbUser, sizeof(dbUser));
+                }
+                else
+                {
+                    res = (ResponseHeader){htons(401), htonl(0), "Autenticazione fallita"};
+                    write(socket, &res, sizeof(res));
+                }
+                break;
             }
-            else
-            {
-                res = (ResponseHeader){htons(401), htonl(0), "Autenticazione fallita"};
-                write(socket, &res, sizeof(res));
-            }
-            break;
         }
         case 2:
         { // create ticket
@@ -153,14 +155,16 @@ void handleClient(int socket)
 int main()
 {
     printf("Starting server...\n");
+    createDb();
+    createTables();
     int serverFD, clientFD, serverLen, clientLen;
     unsigned short int port = 1420;
-    struct sockaddr_in serverINETAddress; /*Server address*/
-    struct sockaddr_in clientINETAddress; /*Client address*/
-    struct sockaddr *serverSockAddrPtr;   /*Ptr to server address*/
-    struct sockaddr *clientSockAddrPtr;   /*Ptr to client address*/
+    struct sockaddr_in serverINETAddress;
+    struct sockaddr_in clientINETAddress;
+    struct sockaddr *serverSockAddrPtr;
+    struct sockaddr *clientSockAddrPtr;
 
-    signal(SIGCHLD, SIG_IGN); // Kill child processes
+    signal(SIGCHLD, SIG_IGN);
     serverSockAddrPtr = (struct sockaddr *)&serverINETAddress;
     serverLen = sizeof(serverINETAddress);
     clientSockAddrPtr = (struct sockaddr *)&clientINETAddress;
