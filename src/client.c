@@ -89,6 +89,41 @@ int main(void)
         printf("\n%s\n", resp.message);
     }
 
+    Ticket ticket = {
+        .title = "Ticket creato dal client",
+        .description = "ticket per testare la creazione.",
+        .creationDate = time(NULL),
+        .priority = MEDIUM,
+        .state = OPEN,
+        .creator = user,
+        .assignedAgent = NULL
+    };
+
+    sendRequest(clientFD, &(RequestHeader){htons(2), htonl(sizeof(ticket))}, &ticket);
+    receiveResponse(clientFD, &resp, NULL);
+
+    if (ntohs(resp.statusCode) == 201)
+    {
+        printf("\n%s\n", resp.message);
+    }
+    else
+    {
+        printf("\n%s\n", resp.message);
+    }
+
+    // Request ticket list
+    sendRequest(clientFD, &(RequestHeader){htons(3), htonl(strlen(user.email) + 1)}, user.email);
+    receiveResponse(clientFD, &resp, NULL);
+    if (ntohs(resp.statusCode) == 200)
+    {
+        printf("\n%s\n", resp.message);
+        // Here you would typically read the list of tickets from the payload
+    }
+    else
+    {
+        printf("\n%s\n", resp.message);
+    }
+
     close(clientFD);
     exit(0);
 }

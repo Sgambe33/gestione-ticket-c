@@ -8,6 +8,8 @@
 #include "../include/models.h"
 #include "../include/db_utils.h"
 #include <netinet/in.h>
+#include <asm-generic/fcntl.h>
+#include <sys/select.h>
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
@@ -45,13 +47,22 @@
 */
 
 void handleClient(int socket)
-{
+{       
     ResponseHeader res;
     char email[64];
     while (1)
     {
         RequestHeader req;
+        
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(socket, &rfds);
+
+        struct timeval tv = {2, 0}; // timeout 2 secondi
+        int retval = select(socket + 1, &rfds, NULL, NULL, &tv);
+
         ssize_t bytesRead = read(socket, &req, sizeof(req));
+        
         if (bytesRead <= 0)
         {
             perror("read serv");
@@ -99,11 +110,11 @@ void handleClient(int socket)
         { // create ticket
             Ticket toCreate;
             ssize_t ticketBytesRead = read(socket, &toCreate, sizeof(toCreate));
+
             if (ticketBytesRead > 0)
             {
-                // TODO: Save to DB and check result
-                int success = 1; // Replace with actual DB result
-                if (success)
+                int DBresponse = createTicket(&toCreate);
+                if (DBresponse == SQLITE_OK || DBresponse == SQLITE_DONE)
                 {
                     res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
                 }
