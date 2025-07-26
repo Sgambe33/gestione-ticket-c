@@ -74,7 +74,8 @@ int main(void)
     } while (result == -1);
     printf("\nConnesso");
 
-    char emailPwd[] = "alice@example.com\npass1";
+    // char emailPwd[] = "alice@example.com\npass1";
+   char emailPwd[] = "franco@example.com\nagent1";
     sendRequest(clientFD, &(RequestHeader){htons(1), htonl(sizeof(emailPwd))}, emailPwd);
 
     ResponseHeader resp;
@@ -89,6 +90,8 @@ int main(void)
         printf("\n%s\n", resp.message);
     }
 
+    // create a ticket
+    
     Ticket ticket = {
         .title = "Ticket creato dal client",
         .description = "ticket per testare la creazione.",
@@ -97,8 +100,8 @@ int main(void)
         .state = OPEN,
         .creator = user,
         .assignedAgent = NULL
-    };
-
+    };/*
+    
     sendRequest(clientFD, &(RequestHeader){htons(2), htonl(sizeof(ticket))}, &ticket);
     receiveResponse(clientFD, &resp, NULL);
 
@@ -109,15 +112,22 @@ int main(void)
     else
     {
         printf("\n%s\n", resp.message);
-    }
+    }*/
 
-    // Request ticket list
-    sendRequest(clientFD, &(RequestHeader){htons(3), htonl(strlen(user.email) + 1)}, user.email);
+    // TODO: invece di inviare il ticket intero, inviare solo le modifiche?
+
+    // modify a ticket
+    Ticket modifiedTicket = ticket;
+    modifiedTicket.id = 28;
+    modifiedTicket.assignedAgent = user;
+    modifiedTicket.state = ASSIGNED;
+    modifiedTicket.priority = HIGH;
+    sendRequest(clientFD, &(RequestHeader){htons(4), htonl(sizeof(modifiedTicket))}, &modifiedTicket);
     receiveResponse(clientFD, &resp, NULL);
+
     if (ntohs(resp.statusCode) == 200)
     {
         printf("\n%s\n", resp.message);
-        // Here you would typically read the list of tickets from the payload
     }
     else
     {

@@ -47,13 +47,13 @@
 */
 
 void handleClient(int socket)
-{       
+{
     ResponseHeader res;
     char email[64];
     while (1)
     {
         RequestHeader req;
-        
+
         fd_set rfds;
         FD_ZERO(&rfds);
         FD_SET(socket, &rfds);
@@ -62,7 +62,7 @@ void handleClient(int socket)
         int retval = select(socket + 1, &rfds, NULL, NULL, &tv);
 
         ssize_t bytesRead = read(socket, &req, sizeof(req));
-        
+
         if (bytesRead <= 0)
         {
             perror("read serv");
@@ -90,8 +90,8 @@ void handleClient(int socket)
                 char *email = strtok(test, "\n");
                 char *password = strtok(NULL, "\n");
 
-                User dbUser = getUser(email);                
-                
+                User dbUser = getUser(email);
+
                 if (strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0)
                 {
                     res = (ResponseHeader){htons(200), htonl(sizeof(dbUser)), "Autenticazione avvenuta"};
@@ -113,8 +113,8 @@ void handleClient(int socket)
 
             if (ticketBytesRead > 0)
             {
-                int DBresponse = createTicket(&toCreate);
-                if (DBresponse == SQLITE_OK || DBresponse == SQLITE_DONE)
+                int DbResponse = createTicket(&toCreate);
+                if (DbResponse == SQLITE_OK || DbResponse == SQLITE_DONE)
                 {
                     res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
                 }
@@ -153,9 +153,30 @@ void handleClient(int socket)
             }
             break;
         }
-        case 4: // update ticket
-            // TODO: Implement update ticket logic
+        case 4:
+        { // update ticket
+            Ticket toUpdate;
+            ssize_t ticketBytesRead = read(socket, &toUpdate, sizeof(toUpdate));
+            if (ticketBytesRead > 0)
+            {
+                int DbResponse = updateTicket(&toUpdate);
+                if (DbResponse == SQLITE_OK || DbResponse == SQLITE_DONE)
+                {
+                    res = (ResponseHeader){htons(200), htonl(0), "Ticket aggiornato con successo"};
+                }
+                else
+                {
+                    res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
+                }
+                write(socket, &res, sizeof(res));
+            }
+            else
+            {
+                res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
+                write(socket, &res, sizeof(res));
+            }
             break;
+        }
         default:
             printf("Unknown command ID\n");
         }
