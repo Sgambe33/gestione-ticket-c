@@ -1,10 +1,9 @@
 #include "../../include/db_utils.h"
-#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 sqlite3 *db;
 char *zErrMsg = 0;
@@ -200,7 +199,7 @@ void getTicketList(char email[])
     }
     else
     {
-        // Assuming email is used to filter tickets assigned to a specific user
+        // If an email is provided, retrieve tickets for the user
         snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\";", email);
     }
     commandResult = sqlite3_exec(db, sql, callbackTicket, 0, &zErrMsg);
@@ -221,6 +220,8 @@ int updateTicket(Ticket *ticket)
              ticket->state,
              ticket->assignedAgent.email,
              ticket->id);
+             
+    printf("ticket->id: %d\n", ticket->id);
     int commandResult = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
     return commandResult;
 }
