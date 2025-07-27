@@ -9,12 +9,43 @@ enum Priority
     HIGH
 };
 
+char *priorityToString(enum Priority priority)
+{
+    switch (priority)
+    {
+    case LOW:
+        return "Low";
+    case MEDIUM:
+        return "Medium";
+    case HIGH:
+        return "High";
+    default:
+        return "Unknown";
+    }
+}
+
+
 enum State
 {
     CLOSED,
     ASSIGNED,
     OPEN
 };
+
+char *stateToString(enum State state)
+{
+    switch (state)
+    {
+    case CLOSED:
+        return "Closed";
+    case ASSIGNED:
+        return "Assigned";
+    case OPEN:
+        return "Open";
+    default:
+        return "Unknown";
+    }
+}
 
 typedef enum
 {
@@ -56,3 +87,9 @@ typedef struct
     uint32_t payloadSize; // 4 bytes
     char message[128];    // 128 bytes
 } __attribute__((packed)) ResponseHeader;
+
+typedef struct
+{
+    Ticket *array;
+    int count
+} TicketResult;
