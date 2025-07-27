@@ -96,6 +96,77 @@ void on_login_button_clicked(GtkButton *button, gpointer user_data)
     }
 }
 
+void render_priority(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+                     GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+    int priority;
+    gtk_tree_model_get(model, iter, 5, &priority, -1); // column 5 = priority
+    g_object_set(renderer, "text", priorityToString(priority), NULL);
+}
+
+void render_state(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+                  GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+    int state;
+    gtk_tree_model_get(model, iter, 6, &state, -1); // column 6 = state
+    g_object_set(renderer, "text", stateToString(state), NULL);
+}
+
+void on_main_window_show(GtkWidget *widget, gpointer user_data)
+{
+    GtkBuilder *builder = GTK_BUILDER(user_data);
+    GtkListStore *store = GTK_LIST_STORE(gtk_builder_get_object(builder, "liststore_items"));
+    GtkTreeIter iter;
+
+    GtkTreeViewColumn *priority_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority"));
+    GtkCellRenderer *priority_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority"));
+    gtk_tree_view_column_set_cell_data_func(priority_col, priority_renderer, render_priority, NULL, NULL);
+
+    GtkTreeViewColumn *state_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status"));
+    GtkCellRenderer *state_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status"));
+    gtk_tree_view_column_set_cell_data_func(state_col, state_renderer, render_state, NULL, NULL);
+
+    // 1) Request tickets
+    RequestHeader req = {
+        .commandId = htons(3),
+        .payloadSize = htonl(strlen(currentUser.email) + 1)};
+    sendRequest(clientFD, &req, currentUser.email);
+
+    ResponseHeader resp;
+    // assume no more than 100 tickets
+    Ticket *tickets = malloc(100 * sizeof *tickets);
+    receiveResponse(clientFD, &resp, tickets);
+
+    // 2) Compute how many
+    uint32_t payloadBytes = ntohl(resp.payloadSize);
+    int nTickets = payloadBytes / sizeof *tickets;
+
+    // 3) Append each row
+    for (int i = 0; i < nTickets; i++)
+    {
+        char date_buf[32];
+        // convert creationDate (assumed UNIX timestamp) to string
+        time_t ts = tickets[i].creationDate;
+        struct tm tm;
+        localtime_r(&ts, &tm);
+        strftime(date_buf, sizeof date_buf, "%Y-%m-%d %H:%M", &tm);
+
+        gtk_list_store_append(store, &iter);
+        gtk_list_store_set(store, &iter,
+                           0, tickets[i].id,
+                           1, tickets[i].title,
+                           2, tickets[i].description,
+                           3, date_buf,
+                           4, tickets[i].creator.email,
+                           5, tickets[i].priority,
+                           6, tickets[i].state,
+                           7, tickets[i].assignedAgent.email,
+                           -1);
+    }
+
+    free(tickets);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -119,6 +190,9 @@ int main(int argc, char *argv[])
 
     GtkWidget *loginButton = GTK_WIDGET(gtk_builder_get_object(builder, "connect_button"));
     g_signal_connect(loginButton, "clicked", G_CALLBACK(on_login_button_clicked), builder);
+
+    GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+    g_signal_connect(mainWindow, "show", G_CALLBACK(on_main_window_show), builder);
 
     gtk_widget_show_all(window);
 
