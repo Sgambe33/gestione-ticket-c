@@ -33,37 +33,40 @@ static int callbackUser(void *NotUsed, int argc, char **argv, char **azColName)
     {
         fprintf(stderr, "User list is full\n");
         return 1;
-    }   
+    }
 
     strncpy(user.name, argv[0] ? argv[0] : "", sizeof(user.name) - 1);
     strncpy(user.surname, argv[1] ? argv[1] : "", sizeof(user.surname) - 1);
     strncpy(user.email, argv[2] ? argv[2] : "", sizeof(user.email) - 1);
     strncpy(user.password, argv[3] ? argv[3] : "", sizeof(user.password) - 1);
     user.role = atoi(argv[4]);
-    userList[userCount++] = user;   
+    userList[userCount++] = user;
 
     return 0;
 }
 
 static int callbackTicket(void *NotUsed, int argc, char **argv, char **azColName)
 {
-    Ticket ticket;
+    TicketResult *result = (TicketResult *)NotUsed;
 
-    if (ticketCount >= MAX_TICKET_COUNT)
+    if (result->count >= MAX_TICKET_COUNT)
     {
         fprintf(stderr, "Ticket list is full\n");
         return 1;
     }
 
-    ticket.id = atoi(argv[0]);
-    strncpy(ticket.title, argv[1] ? argv[1] : "", sizeof(ticket.title) - 1);
-    strncpy(ticket.description, argv[2] ? argv[2] : "", sizeof(ticket.description) - 1);
-    ticket.creationDate = argv[3] ? atoi(argv[3]) : 0;
-    ticket.priority = atoi(argv[4]);
-    ticket.state = atoi(argv[5]);
-    strncpy(ticket.creator.email, argv[6] ? argv[6] : "", sizeof(ticket.creator.email) - 1);
-    strncpy(ticket.assignedAgent.email, argv[7] ? argv[7] : "", sizeof(ticket.assignedAgent.email) - 1);
-    ticketList[ticketCount++] = ticket;
+    Ticket *tmpTicket = &result->array[result->count];
+    User tmpUser;
+    tmpTicket->id = atoi(argv[0]);
+    strncpy(tmpTicket->title, argv[1] ? argv[1] : "", sizeof(tmpTicket->title) - 1);
+    strncpy(tmpTicket->description, argv[2] ? argv[2] : "", sizeof(tmpTicket->description) - 1);
+    tmpTicket->creationDate = argv[3] ? atoi(argv[3]) : 0;
+    tmpTicket->priority = atoi(argv[4]);
+    tmpTicket->state = atoi(argv[5]);
+    tmpTicket->creator = getUser(argv[6]);
+    tmpTicket->assignedAgent = argv[7] ? getUser(argv[7]) : tmpUser;
+
+    result->count++;
 
     return 0;
 }
@@ -154,7 +157,7 @@ User getUser(char email[])
     User user;
     char sql[256];
     snprintf(sql, sizeof(sql), "SELECT * FROM User WHERE email = \"%s\";", email);
-    
+
     commandResult = sqlite3_exec(db, sql, callbackUser, 0, &zErrMsg);
 
     if (commandResult != SQLITE_OK)
@@ -168,7 +171,7 @@ User getUser(char email[])
     {
         return userList[0];
     }
-    
+
     return user;
 }
 
@@ -187,29 +190,32 @@ void getUserList(Role role)
     }
 }
 
-void getTicketList(char email[])
+int getTicketList(char email[], Ticket **array)
 {
-    memset(ticketList, 0, sizeof(ticketList));
-    ticketCount = 0;
+    TicketResult ticketResult;
+    ticketResult.array = malloc(MAX_TICKET_COUNT * sizeof(Ticket));
+    ticketResult.count = 0;
+
     char sql[256];
 
     if (email == NULL || strlen(email) == 0)
-    {   
-        // If no email is provided, retrieve all tickets (superagent view)
+    {
         snprintf(sql, sizeof(sql), "SELECT * FROM Ticket;");
     }
     else
     {
-        // Assuming email is used to filter tickets assigned to a specific user
         snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\";", email);
     }
-    commandResult = sqlite3_exec(db, sql, callbackTicket, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackTicket, &ticketResult, &zErrMsg);
 
     if (commandResult != SQLITE_OK)
     {
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
+        free(array);
     }
+    *array = ticketResult.array;
+    return ticketResult.count;
 }
 
 int updateTicket(Ticket *ticket)
