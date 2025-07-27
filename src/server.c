@@ -79,8 +79,8 @@ void handleClient(int socket)
                 char *email = strtok(test, "\n");
                 char *password = strtok(NULL, "\n");
 
-                User dbUser = getUser(email);                
-                
+                User dbUser = getUser(email);
+
                 if (strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0)
                 {
                     res = (ResponseHeader){htons(200), htonl(sizeof(dbUser)), "Autenticazione avvenuta"};
@@ -125,9 +125,11 @@ void handleClient(int socket)
             ssize_t emailBytesRead = read(socket, email, sizeof(email));
             if (emailBytesRead > 0)
             {
-                // TODO: Fetch tickets for user
-                res = (ResponseHeader){htons(200), htonl(0), "Lista dei ticket"};
+                Ticket *tickets = NULL;
+                int count = getTicketList(email, &tickets);
+                res = (ResponseHeader){htons(200), htonl(count*sizeof(Ticket)), "Lista dei ticket"};
                 write(socket, &res, sizeof(res));
+                write(socket, tickets, count * sizeof(Ticket));
             }
             else if (emailBytesRead == 0)
             {
