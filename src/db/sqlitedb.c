@@ -6,7 +6,7 @@
 #include <fcntl.h>
 
 sqlite3 *db;
-char *zErrMsg = 0;
+char *errMsg = 0;
 int commandResult;
 User userList[MAX_USER_COUNT];
 Ticket ticketList[MAX_TICKET_COUNT];
@@ -77,58 +77,72 @@ int createDb()
     return result;
 }
 
-int createTables()
+int createTableUser()
 {
-    commandResult = sqlite3_open("tickets.db", &db);
+    // Crea le tabelle 'User' e 'Ticket' in 'ticketing_system_db'
+    const char *sqlUser =
+        "CREATE TABLE IF NOT EXISTS \"User\" ("
+        "\"name\" TEXT NOT NULL, "
+        "\"surname\" TEXT NOT NULL, "
+        "\"email\" TEXT PRIMARY KEY, "
+        "\"password\" TEXT NOT NULL, "
+        "\"role\" INTEGER NOT NULL);"
+        "PRIMARY KEY (\"email\")"
+        ");";
 
-    char *sql;
-
-    sql = "CREATE TABLE IF NOT EXISTS \"User\" ("
-          "\"name\" TEXT NOT NULL,"
-          "\"surname\" TEXT NOT NULL,"
-          "\"email\" TEXT NOT NULL,"
-          "\"password\" TEXT NOT NULL,"
-          "\"role\" INTEGER NOT NULL,"
-          "PRIMARY KEY(\"email\")"
-          ");";
-
-    commandResult = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sqlUser, callback, 0, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }
-    else
-    {
-        fprintf(stdout, "Table User created successfully\n");
-    }
-
-    sql = "CREATE TABLE IF NOT EXISTS Ticket("
-          "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n"
-          "title TEXT NOT NULL,\n"
-          "description TEXT,\n"
-          "creationDate TEXT NOT NULL,\n"
-          "priority INTEGER NOT NULL,\n"
-          "state INTEGER,\n"
-          "creator TEXT NOT NULL,\n"
-          "assignedAgent TEXT NOT NULL,\n"
-          "FOREIGN KEY(assignedAgent) REFERENCES User(email),\n"
-          "FOREIGN KEY(creator) REFERENCES User(email)\n"
-          ");";
-
-    commandResult = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-
-    if (commandResult != SQLITE_OK)
-    {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }
-    else
-    {
-        fprintf(stdout, "Table Ticket created successfully\n");
+        fpritnf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
+        return commandResult;
     }
     return commandResult;
+}
+
+int createTableTicket()
+{
+    const char *sqlTicket =
+    "CREATE TABLE IF NOT EXISTS \"Ticket\" ("
+    "\"id\" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+    "\"title\" TEXT NOT NULL, "
+    "\"description\" TEXT NOT NULL, "
+    "\"creationDate\" INTEGER NOT NULL, "
+    "\"priority\" INTEGER NOT NULL, "
+    "\"state\" INTEGER NOT NULL, "
+    "\"creatorEmail\" TEXT NOT NULL, "
+    "\"assignedAgentEmail\" TEXT, "
+    "FOREIGN KEY (\"creatorEmail\") REFERENCES \"User\" (\"email\"), "
+    "FOREIGN KEY (\"assignedAgentEmail\") REFERENCES \"User\" (\"email\")"
+    ");";
+
+    commandResult = sqlite3_exec(db, sqlTicket, callback, 0, &errMsg);
+
+    if (commandResult != SQLITE_OK)
+    {
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
+        return commandResult;
+    }
+    return commandResult;
+}
+
+int createTables()
+{
+    int rcUser = createTableUser();
+    if (rcUser != SQLITE_OK)
+    {
+        return rcUser;
+    }
+
+    int rcTicket = createTableTicket();
+    if (rcTicket != SQLITE_OK)
+    {
+        return rcTicket;
+    }
+
+    return SQLITE_OK;
 }
 
 int createTicket(Ticket *ticket)
@@ -144,7 +158,7 @@ int createTicket(Ticket *ticket)
              ticket->state,
              ticket->creator.email,
              ticket->assignedAgent.email);
-    int commandResult = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    int commandResult = sqlite3_exec(db, sql, callback, 0, &errMsg);
     return commandResult;
 }
 
@@ -154,12 +168,12 @@ User getUser(char email[])
     char sql[256];
     snprintf(sql, sizeof(sql), "SELECT * FROM User WHERE email = \"%s\";", email);
     
-    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
         return user;
     }
 
@@ -177,12 +191,12 @@ void getUserList(Role role)
     userCount = 0;
     char sql[256];
     snprintf(sql, sizeof(sql), "SELECT * FROM User WHERE role = %d;", role);
-    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
     }
 }
 
@@ -202,12 +216,12 @@ void getTicketList(char email[])
         // If an email is provided, retrieve tickets for the user
         snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\";", email);
     }
-    commandResult = sqlite3_exec(db, sql, callbackTicket, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackTicket, 0, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
     }
 }
 
@@ -222,6 +236,6 @@ int updateTicket(Ticket *ticket)
              ticket->id);
              
     printf("ticket->id: %d\n", ticket->id);
-    int commandResult = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    int commandResult = sqlite3_exec(db, sql, callback, 0, &errMsg);
     return commandResult;
 }
