@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkListStore" id="agents_liststore">
@@ -30,7 +30,7 @@
             <property name="margin-bottom">5</property>
             <property name="layout-style">end</property>
             <child>
-              <object class="GtkButton" id="discard_ticket_button1">
+              <object class="GtkButton" id="discard_search_button">
                 <property name="label">gtk-cancel</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -79,13 +79,12 @@
             <property name="margin-bottom">5</property>
             <property name="row-spacing">5</property>
             <child>
-              <object class="GtkEntry" id="ticket_title_entry1">
+              <object class="GtkEntry" id="title_filter_entry">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
                 <property name="max-length">64</property>
-                <property name="primary-icon-name">help-about</property>
               </object>
               <packing>
                 <property name="left-attach">2</property>
@@ -141,7 +140,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBoxText" id="priority_combobox1">
+              <object class="GtkComboBoxText" id="priority_filter_combobox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
@@ -159,7 +158,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBoxText" id="state_combobox1">
+              <object class="GtkComboBoxText" id="state_filter_combobox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
@@ -177,7 +176,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkComboBox" id="agent_combobox1">
+              <object class="GtkComboBox" id="agent_filter_combobox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="hexpand">True</property>
@@ -193,25 +192,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="ticket_edit_error_label1">
-                <property name="sensitive">False</property>
-                <property name="can-focus">False</property>
-                <property name="vexpand">True</property>
-                <property name="label" translatable="yes">Errore:</property>
-                <attributes>
-                  <attribute name="style" value="italic"/>
-                  <attribute name="weight" value="semibold"/>
-                  <attribute name="foreground" value="#eded33333b3b"/>
-                </attributes>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">5</property>
-                <property name="width">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkCheckButton">
+              <object class="GtkCheckButton" id="enable_priority_filter">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -223,7 +204,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton">
+              <object class="GtkCheckButton" id="enable_state_filter">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -235,7 +216,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton">
+              <object class="GtkCheckButton" id="enable_agent_filter">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -247,7 +228,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton">
+              <object class="GtkCheckButton" id="enable_title_filter">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -259,7 +240,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton">
+              <object class="GtkCheckButton" id="enable_description_filter">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -271,7 +252,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkEntry" id="search_ticket_description">
+              <object class="GtkEntry" id="description_filter_entry">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="hexpand">True</property>
@@ -291,6 +272,43 @@
               <packing>
                 <property name="left-attach">1</property>
                 <property name="top-attach">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCalendar" id="date_filter_calendar">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="year">2025</property>
+                <property name="month">6</property>
+                <property name="day">28</property>
+              </object>
+              <packing>
+                <property name="left-attach">2</property>
+                <property name="top-attach">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Creazione:</property>
+                <property name="xalign">0.89999997615814209</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">5</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="enable_date_filter">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">5</property>
               </packing>
             </child>
           </object>
@@ -341,12 +359,13 @@
             <property name="margin-bottom">5</property>
             <property name="spacing">2</property>
             <child>
-              <object class="GtkSearchEntry">
+              <object class="GtkButton">
+                <property name="label">gtk-find</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="primary-icon-name">edit-find-symbolic</property>
-                <property name="primary-icon-activatable">False</property>
-                <property name="primary-icon-sensitive">False</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <property name="always-show-image">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -358,7 +377,7 @@
               <object class="GtkLabel" id="welcome_label">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Benvenuta Alice Rossi</property>
+                <property name="label" translatable="yes">Benvenuto\a Alice Rossi</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -411,11 +430,13 @@
               <object class="GtkTreeView" id="treeview_items">
                 <property name="can-focus">False</property>
                 <property name="model">liststore_items</property>
+                <property name="enable-grid-lines">horizontal</property>
                 <child internal-child="selection">
                   <object class="GtkTreeSelection"/>
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_id">
+                    <property name="resizable">True</property>
                     <property name="title">ID</property>
                     <property name="sort-column-id">0</property>
                     <child>
@@ -428,7 +449,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_title">
-                    <property name="title">Title</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Titolo</property>
                     <property name="sort-column-id">1</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_title"/>
@@ -440,7 +462,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_desc">
-                    <property name="title">Description</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Descrizione</property>
                     <property name="sort-column-id">2</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_desc"/>
@@ -452,7 +475,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_date">
-                    <property name="title">Created</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Creato</property>
                     <property name="sort-column-id">3</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_date"/>
@@ -464,7 +488,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_priority">
-                    <property name="title">Priority</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Priorità</property>
                     <property name="sort-column-id">4</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_priority"/>
@@ -476,7 +501,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_status">
-                    <property name="title">Status</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Stato</property>
                     <property name="sort-column-id">5</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_status"/>
@@ -488,7 +514,8 @@
                 </child>
                 <child>
                   <object class="GtkTreeViewColumn" id="col_agent">
-                    <property name="title">Agent</property>
+                    <property name="resizable">True</property>
+                    <property name="title">Agente</property>
                     <property name="sort-column-id">6</property>
                     <child>
                       <object class="GtkCellRendererText" id="renderer_agent"/>
@@ -513,6 +540,7 @@
   </object>
   <object class="GtkWindow" id="login_window">
     <property name="name">login_window</property>
+    <property name="height-request">250</property>
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Login</property>
@@ -542,6 +570,7 @@
         <child>
           <object class="GtkEntry" id="email_entry">
             <property name="name">email_entry</property>
+            <property name="width-request">400</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="margin-start">30</property>
@@ -562,6 +591,7 @@
         <child>
           <object class="GtkEntry" id="password_entry">
             <property name="name">password_entry</property>
+            <property name="width-request">400</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="margin-start">30</property>
