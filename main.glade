@@ -329,13 +329,13 @@
       <column type="gchararray"/>
       <!-- column-name gchararray1 -->
       <column type="gchararray"/>
-      <!-- column-name gchararray2 -->
-      <column type="gchararray"/>
       <!-- column-name gint1 -->
-      <column type="gint"/>
+      <column type="gint64"/>
       <!-- column-name gint2 -->
       <column type="gint"/>
-      <!-- column-name gchararray3 -->
+      <!-- column-name gint3 -->
+      <column type="gint"/>
+      <!-- column-name gchararray2 -->
       <column type="gchararray"/>
     </columns>
   </object>
@@ -359,7 +359,7 @@
             <property name="margin-bottom">5</property>
             <property name="spacing">2</property>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="search_button">
                 <property name="label">gtk-find</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
