@@ -1,6 +1,7 @@
+#ifndef MODELS_H
+#define MODELS_H
 #include <time.h>
 #include <stdint.h>
-#pragma once
 
 enum Priority
 {
@@ -42,7 +43,7 @@ typedef struct
     enum State state;
     User creator;
     User assignedAgent;
-} Ticket;
+} __attribute__((packed)) Ticket;
 
 typedef struct
 {
@@ -60,5 +61,6 @@ typedef struct
 typedef struct
 {
     Ticket *array;
-    int count
+    int count;
 } TicketResult;
+#endif // MODELS_H
