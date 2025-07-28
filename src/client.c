@@ -8,6 +8,7 @@
 #include <netinet/in.h> /* For AF_INET sockets */
 #include <gtk/gtk.h>
 #include "../include/models.h"
+#include "../include/gui_utils.h"
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
@@ -53,7 +54,7 @@ void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
     }
 }
 
-void on_login_button_clicked(GtkButton *button, gpointer user_data)
+void onLoginButtonClicked(GtkButton *button, gpointer user_data)
 {
     GtkBuilder *builder = (GtkBuilder *)user_data;
     GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
@@ -66,7 +67,7 @@ void on_login_button_clicked(GtkButton *button, gpointer user_data)
 
     if (strlen(email) == 0 || strlen(password) == 0)
     {
-        gtk_label_set_text(GTK_LABEL(errorLabel), "Email and password cannot be empty.");
+        gtk_label_set_text(GTK_LABEL(errorLabel), "Email e password non possono essere vuoti");
         gtk_widget_show(errorLabel);
         return;
     }
@@ -96,7 +97,7 @@ void on_login_button_clicked(GtkButton *button, gpointer user_data)
     }
 }
 
-void render_priority(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
                      GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
     int priority;
@@ -104,7 +105,7 @@ void render_priority(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
     g_object_set(renderer, "text", priorityToString(priority), NULL);
 }
 
-void render_state(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
                   GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 {
     int state;
@@ -112,7 +113,7 @@ void render_state(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
     g_object_set(renderer, "text", stateToString(state), NULL);
 }
 
-void on_main_window_show(GtkWidget *widget, gpointer user_data)
+void onMainWindowShow(GtkWidget *widget, gpointer user_data)
 {
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkListStore *store = GTK_LIST_STORE(gtk_builder_get_object(builder, "liststore_items"));
@@ -120,11 +121,11 @@ void on_main_window_show(GtkWidget *widget, gpointer user_data)
 
     GtkTreeViewColumn *priority_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority"));
     GtkCellRenderer *priority_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority"));
-    gtk_tree_view_column_set_cell_data_func(priority_col, priority_renderer, render_priority, NULL, NULL);
+    gtk_tree_view_column_set_cell_data_func(priority_col, priority_renderer, renderPriority, NULL, NULL);
 
     GtkTreeViewColumn *state_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status"));
     GtkCellRenderer *state_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status"));
-    gtk_tree_view_column_set_cell_data_func(state_col, state_renderer, render_state, NULL, NULL);
+    gtk_tree_view_column_set_cell_data_func(state_col, state_renderer, renderState, NULL, NULL);
 
     // 1) Request tickets
     RequestHeader req = {
@@ -189,10 +190,10 @@ int main(int argc, char *argv[])
     }
 
     GtkWidget *loginButton = GTK_WIDGET(gtk_builder_get_object(builder, "connect_button"));
-    g_signal_connect(loginButton, "clicked", G_CALLBACK(on_login_button_clicked), builder);
+    g_signal_connect(loginButton, "clicked", G_CALLBACK(onLoginButtonClicked), builder);
 
     GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
-    g_signal_connect(mainWindow, "show", G_CALLBACK(on_main_window_show), builder);
+    g_signal_connect(mainWindow, "show", G_CALLBACK(onMainWindowShow), builder);
 
     gtk_widget_show_all(window);
 
