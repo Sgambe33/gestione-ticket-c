@@ -8,8 +8,7 @@
 #include "../include/models.h"
 #include "../include/db_utils.h"
 #include <netinet/in.h>
-#include <asm-generic/fcntl.h>
-#include <sys/select.h>
+#include <arpa/inet.h>
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
@@ -186,8 +185,7 @@ void handleClient(int socket)
     close(socket);
 }
 
-int main()
-{
+int main() {
     printf("Starting server...\n");
     createDb();
     createTables();
@@ -233,32 +231,6 @@ int main()
             close(clientFD);
             exit(0);
         }
-        else
-        {
-            close(clientFD);
-        }
+        close(clientFD);
     }
-
-    // size_t payloadSize = ntohl(h.payloadSize);
-    // if (payloadSize > 0 && payloadSize < 4096) // sanity check
-    // {
-    //     char msg[payloadSize];
-    //     ssize_t payloadBytesRead = read(clientFD, msg, payloadSize);
-    //     if (payloadBytesRead > 0)
-    //     {
-    //         printf("%s\n", msg);
-    //     }
-    //     else
-    //     {
-    //         perror("read");
-    //     }
-    // }
-    //     close(clientFD);
-    //     exit(0);
-    // }
-    // else
-    // {
-    //     close(clientFD);
-    // }
-    //}
 }
