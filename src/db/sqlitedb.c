@@ -72,24 +72,23 @@ static int callbackTicket(void *NotUsed, int argc, char **argv, char **azColName
 
 int createDb()
 {
-    int result = open("tickets.db", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (result > 0)
+    commandResult = sqlite3_open("tickets.db", &db);
+    if (commandResult != SQLITE_OK)
     {
-        close(result);
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
     }
-    return result;
+    return commandResult;
 }
 
 int createTableUser()
 {
-    // Crea le tabelle 'User' e 'Ticket' in 'ticketing_system_db'
     const char *sqlUser =
         "CREATE TABLE IF NOT EXISTS \"User\" ("
         "\"name\" TEXT NOT NULL, "
         "\"surname\" TEXT NOT NULL, "
         "\"email\" TEXT PRIMARY KEY, "
         "\"password\" TEXT NOT NULL, "
-        "\"role\" INTEGER NOT NULL);"
+        "\"role\" INTEGER NOT NULL,"
         "PRIMARY KEY (\"email\")"
         ");";
 
@@ -97,7 +96,7 @@ int createTableUser()
 
     if (commandResult != SQLITE_OK)
     {
-        fpritnf(stderr, "SQL error: %s\n", errMsg);
+        fprintf(stderr, "SQL error while creating table USER: %s\n", errMsg);
         sqlite3_free(errMsg);
         return commandResult;
     }
@@ -124,7 +123,7 @@ int createTableTicket()
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", errMsg);
+        fprintf(stderr, "SQL error while creating table TICKET: %s\n", errMsg);
         sqlite3_free(errMsg);
         return commandResult;
     }
@@ -171,7 +170,7 @@ User getUser(char email[])
     char sql[256];
     snprintf(sql, sizeof(sql), "SELECT * FROM User WHERE email = \"%s\";", email);
 
-    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackUser, 0, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
@@ -219,12 +218,12 @@ int getTicketList(char email[], Ticket **array)
     {
         snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\";", email);
     }
-    commandResult = sqlite3_exec(db, sql, callbackTicket, &ticketResult, &zErrMsg);
+    commandResult = sqlite3_exec(db, sql, callbackTicket, &ticketResult, &errMsg);
 
     if (commandResult != SQLITE_OK)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
         free(array);
     }
     *array = ticketResult.array;
