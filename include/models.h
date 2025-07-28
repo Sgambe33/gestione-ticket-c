@@ -9,43 +9,12 @@ enum Priority
     HIGH
 };
 
-char *priorityToString(enum Priority priority)
-{
-    switch (priority)
-    {
-    case LOW:
-        return "Low";
-    case MEDIUM:
-        return "Medium";
-    case HIGH:
-        return "High";
-    default:
-        return "Unknown";
-    }
-}
-
-
 enum State
 {
     CLOSED,
     ASSIGNED,
     OPEN
 };
-
-char *stateToString(enum State state)
-{
-    switch (state)
-    {
-    case CLOSED:
-        return "Closed";
-    case ASSIGNED:
-        return "Assigned";
-    case OPEN:
-        return "Open";
-    default:
-        return "Unknown";
-    }
-}
 
 typedef enum
 {
