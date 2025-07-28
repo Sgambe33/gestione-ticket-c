@@ -8,6 +8,8 @@
 #include "../include/models.h"
 #include "../include/db_utils.h"
 #include <netinet/in.h>
+#include <asm-generic/fcntl.h>
+#include <sys/select.h>
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
@@ -51,7 +53,16 @@ void handleClient(int socket)
     while (1)
     {
         RequestHeader req;
+
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(socket, &rfds);
+
+        struct timeval tv = {2, 0}; // timeout 2 secondi
+        int retval = select(socket + 1, &rfds, NULL, NULL, &tv);
+
         ssize_t bytesRead = read(socket, &req, sizeof(req));
+
         if (bytesRead <= 0)
         {
             perror("read serv");
@@ -99,11 +110,11 @@ void handleClient(int socket)
         { // create ticket
             Ticket toCreate;
             ssize_t ticketBytesRead = read(socket, &toCreate, sizeof(toCreate));
+
             if (ticketBytesRead > 0)
             {
-                // TODO: Save to DB and check result
-                int success = 1; // Replace with actual DB result
-                if (success)
+                int DbResponse = createTicket(&toCreate);
+                if (DbResponse == SQLITE_OK || DbResponse == SQLITE_DONE)
                 {
                     res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
                 }
@@ -144,9 +155,30 @@ void handleClient(int socket)
             }
             break;
         }
-        case 4: // update ticket
-            // TODO: Implement update ticket logic
+        case 4:
+        { // update ticket
+            Ticket toUpdate;
+            ssize_t ticketBytesRead = read(socket, &toUpdate, sizeof(toUpdate));
+            if (ticketBytesRead > 0)
+            {
+                int DbResponse = updateTicket(&toUpdate);
+                if (DbResponse == SQLITE_OK || DbResponse == SQLITE_DONE)
+                {
+                    res = (ResponseHeader){htons(200), htonl(0), "Ticket aggiornato con successo"};
+                }
+                else
+                {
+                    res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
+                }
+                write(socket, &res, sizeof(res));
+            }
+            else
+            {
+                res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
+                write(socket, &res, sizeof(res));
+            }
             break;
+        }
         default:
             printf("Unknown command ID\n");
         }
