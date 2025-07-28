@@ -6,9 +6,14 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h> /* For AF_INET sockets */
+#include <gtk/gtk.h>
 #include "../include/models.h"
+#include "../include/gui_utils.h"
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
+
+int clientFD;
+User currentUser;
 
 void sendRequest(int socket, RequestHeader *req, void *payload)
 {
@@ -49,9 +54,150 @@ void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
     }
 }
 
-int main(void)
+void onLoginButtonClicked(GtkButton *button, gpointer user_data)
 {
-    int clientFD, serverLen, result;
+    GtkBuilder *builder = (GtkBuilder *)user_data;
+    GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
+    GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
+    GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
+    gtk_widget_hide(errorLabel);
+
+    const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
+    const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
+
+    if (strlen(email) == 0 || strlen(password) == 0)
+    {
+        gtk_label_set_text(GTK_LABEL(errorLabel), "Email e password non possono essere vuoti");
+        gtk_widget_show(errorLabel);
+        return;
+    }
+
+    RequestHeader req;
+    req.commandId = htons(1);
+    req.payloadSize = htonl(strlen(email) + strlen(password) + 2);
+    char payload[strlen(email) + strlen(password) + 2];
+    snprintf(payload, sizeof(payload), "%s\n%s", email, password);
+    sendRequest(clientFD, &req, payload);
+
+    ResponseHeader resp;
+    receiveResponse(clientFD, &resp, &currentUser);
+
+    if (ntohs(resp.statusCode) != 200)
+    {
+        gtk_label_set_text(GTK_LABEL(errorLabel), resp.message);
+        gtk_widget_show(errorLabel);
+        return;
+    }
+    else
+    {
+        GtkWidget *window = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+        gtk_widget_show_all(window);
+        GtkWidget *loginWindow = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
+        gtk_widget_destroy(loginWindow);
+    }
+}
+
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+                     GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+    int priority;
+    gtk_tree_model_get(model, iter, 5, &priority, -1); // column 5 = priority
+    g_object_set(renderer, "text", priorityToString(priority), NULL);
+}
+
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer,
+                  GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
+    int state;
+    gtk_tree_model_get(model, iter, 6, &state, -1); // column 6 = state
+    g_object_set(renderer, "text", stateToString(state), NULL);
+}
+
+void onMainWindowShow(GtkWidget *widget, gpointer user_data)
+{
+    GtkBuilder *builder = GTK_BUILDER(user_data);
+    GtkListStore *store = GTK_LIST_STORE(gtk_builder_get_object(builder, "liststore_items"));
+    GtkTreeIter iter;
+
+    GtkTreeViewColumn *priority_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority"));
+    GtkCellRenderer *priority_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority"));
+    gtk_tree_view_column_set_cell_data_func(priority_col, priority_renderer, renderPriority, NULL, NULL);
+
+    GtkTreeViewColumn *state_col = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status"));
+    GtkCellRenderer *state_renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status"));
+    gtk_tree_view_column_set_cell_data_func(state_col, state_renderer, renderState, NULL, NULL);
+
+    // 1) Request tickets
+    RequestHeader req = {
+        .commandId = htons(3),
+        .payloadSize = htonl(strlen(currentUser.email) + 1)};
+    sendRequest(clientFD, &req, currentUser.email);
+
+    ResponseHeader resp;
+    // assume no more than 100 tickets
+    Ticket *tickets = malloc(100 * sizeof *tickets);
+    receiveResponse(clientFD, &resp, tickets);
+
+    // 2) Compute how many
+    uint32_t payloadBytes = ntohl(resp.payloadSize);
+    int nTickets = payloadBytes / sizeof *tickets;
+
+    // 3) Append each row
+    for (int i = 0; i < nTickets; i++)
+    {
+        char date_buf[32];
+        // convert creationDate (assumed UNIX timestamp) to string
+        time_t ts = tickets[i].creationDate;
+        struct tm tm;
+        localtime_r(&ts, &tm);
+        strftime(date_buf, sizeof date_buf, "%Y-%m-%d %H:%M", &tm);
+
+        gtk_list_store_append(store, &iter);
+        gtk_list_store_set(store, &iter,
+                           0, tickets[i].id,
+                           1, tickets[i].title,
+                           2, tickets[i].description,
+                           3, date_buf,
+                           4, tickets[i].creator.email,
+                           5, tickets[i].priority,
+                           6, tickets[i].state,
+                           7, tickets[i].assignedAgent.email,
+                           -1);
+    }
+
+    free(tickets);
+}
+
+int main(int argc, char *argv[])
+{
+
+    gtk_init(&argc, &argv);
+    GtkBuilder *builder = gtk_builder_new();
+    GError *error = NULL;
+    if (!gtk_builder_add_from_file(builder, "main.glade", &error))
+    {
+        fprintf(stderr, "Error loading UI file: %s\n", error->message);
+        g_error_free(error);
+        return 1;
+    }
+
+    // Get the main window from the UI
+    GtkWidget *window = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
+    if (!window)
+    {
+        fprintf(stderr, "Could not find 'login_window' in UI file.\n");
+        return 1;
+    }
+
+    GtkWidget *loginButton = GTK_WIDGET(gtk_builder_get_object(builder, "connect_button"));
+    g_signal_connect(loginButton, "clicked", G_CALLBACK(onLoginButtonClicked), builder);
+
+    GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+    g_signal_connect(mainWindow, "show", G_CALLBACK(onMainWindowShow), builder);
+
+    gtk_widget_show_all(window);
+
+    int serverLen, result;
     unsigned short int port = 1420;
     struct sockaddr_in serverINETAddress; /*Server address*/
     struct sockaddr *serverSockAddrPtr;   /*Ptr to server address*/
@@ -68,71 +214,13 @@ int main(void)
     do
     {
         result = connect(clientFD, serverSockAddrPtr, serverLen);
-        printf("\nNon connesso...");
+        printf("Non connesso...\n");
         if (result == -1)
             sleep(1);
     } while (result == -1);
-    printf("\nConnesso");
+    printf("Connesso\n");
 
-    // char emailPwd[] = "alice@example.com\npass1";
-   char emailPwd[] = "franco@example.com\nagent1";
-    sendRequest(clientFD, &(RequestHeader){htons(1), htonl(sizeof(emailPwd))}, emailPwd);
-
-    ResponseHeader resp;
-    User user;
-    receiveResponse(clientFD, &resp, &user);
-    if (ntohs(resp.statusCode) == 200)
-    {
-        printf("\nBenvenuto/a %s!\n", user.name);
-    }
-    else
-    {
-        printf("\n%s\n", resp.message);
-    }
-
-    // create a ticket
-    
-    Ticket ticket = {
-        .title = "Ticket creato dal client",
-        .description = "ticket per testare la creazione.",
-        .creationDate = time(NULL),
-        .priority = MEDIUM,
-        .state = OPEN,
-        .creator = user,
-        .assignedAgent = NULL
-    };/*
-    
-    sendRequest(clientFD, &(RequestHeader){htons(2), htonl(sizeof(ticket))}, &ticket);
-    receiveResponse(clientFD, &resp, NULL);
-
-    if (ntohs(resp.statusCode) == 201)
-    {
-        printf("\n%s\n", resp.message);
-    }
-    else
-    {
-        printf("\n%s\n", resp.message);
-    }*/
-
-    // TODO: invece di inviare il ticket intero, inviare solo le modifiche?
-
-    // modify a ticket
-    Ticket modifiedTicket = ticket;
-    modifiedTicket.id = 28;
-    modifiedTicket.assignedAgent = user;
-    modifiedTicket.state = ASSIGNED;
-    modifiedTicket.priority = HIGH;
-    sendRequest(clientFD, &(RequestHeader){htons(4), htonl(sizeof(modifiedTicket))}, &modifiedTicket);
-    receiveResponse(clientFD, &resp, NULL);
-
-    if (ntohs(resp.statusCode) == 200)
-    {
-        printf("\n%s\n", resp.message);
-    }
-    else
-    {
-        printf("\n%s\n", resp.message);
-    }
+    gtk_main();
 
     close(clientFD);
     exit(0);

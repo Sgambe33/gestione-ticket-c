@@ -56,3 +56,9 @@ typedef struct
     uint32_t payloadSize; // 4 bytes
     char message[128];    // 128 bytes
 } __attribute__((packed)) ResponseHeader;
+
+typedef struct
+{
+    Ticket *array;
+    int count
+} TicketResult;

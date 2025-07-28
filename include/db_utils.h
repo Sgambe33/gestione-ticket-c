@@ -5,8 +5,8 @@
 
 void getUserList(Role role);
 User getUser(char email[]);
-void getTicketList(char email[]);
+int getTicketList(char email[], Ticket **array);
 int updateTicket(Ticket *ticket);
-int createTicket(Ticket* ticket);
+int createTicket(Ticket *ticket);
 int createDb();
 int createTables();
