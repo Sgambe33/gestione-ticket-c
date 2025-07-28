@@ -1,8 +1,7 @@
-
-#include "../include/network_utils.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include "../include/network_utils.h"
 
 void sendRequest(int socket, RequestHeader *req, const void *payload)
 {
@@ -18,7 +17,6 @@ void sendRequest(int socket, RequestHeader *req, const void *payload)
         if (bytesWritten < 0)
         {
             perror("write payload");
-            return;
         }
     }
 }
@@ -38,7 +36,6 @@ void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
         if (bytesRead < 0)
         {
             perror("read payload");
-            return;
         }
     }
 }
