@@ -442,9 +442,13 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
 
     const char *title_filter = gtk_entry_get_text(GTK_ENTRY(title_entry));
     const char *description_filter = gtk_entry_get_text(GTK_ENTRY(description_entry));
-    const int priority_id = gtk_combo_box_get_active(GTK_COMBO_BOX(priority_combo));
-    const int state_id = gtk_combo_box_get_active(GTK_COMBO_BOX(state_combo));
-    const char *agent_email = gtk_combo_box_get_active(GTK_COMBO_BOX(agent_combo));
+    GtkTreeIter combo_iter;
+    GtkTreeModel *combo_model = gtk_combo_box_get_model(GTK_COMBO_BOX(agent_combo));
+    char *selected_agent = NULL;
+
+    if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(agent_combo), &combo_iter)) {
+        gtk_tree_model_get(combo_model, &combo_iter, 0, &selected_agent, -1);
+    }
 
     guint year, month, day;
     gtk_calendar_get_date(GTK_CALENDAR(calendar), &year, &month, &day);
@@ -506,10 +510,12 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
             return 0;
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && agent_email)
-    {
-        if (g_strcmp0(agent_email, agent) != 0)
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && selected_agent != NULL) {
+        if (g_strcmp0(selected_agent, agent) != 0) {
+            g_free(selected_agent);
             return 0;
+        }
+        g_free(selected_agent);
     }
 
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date)))
