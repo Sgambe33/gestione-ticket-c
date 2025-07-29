@@ -17,12 +17,12 @@ enum State
     OPEN
 };
 
-typedef enum
+enum Role
 {
     STANDARD,
     AGENT,
     SUPER_AGENT
-} Role;
+};
 
 typedef struct
 {
@@ -30,7 +30,7 @@ typedef struct
     char surname[32];
     char email[64];
     char password[16];
-    Role role;
+    enum Role role;
 } __attribute__((packed)) User;
 
 typedef struct
@@ -62,5 +62,5 @@ typedef struct
 {
     Ticket *array;
     int count;
-} TicketResult;
+} ListResult;
 #endif // MODELS_H

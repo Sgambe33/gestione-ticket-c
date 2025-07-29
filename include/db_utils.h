@@ -5,7 +5,7 @@
 #define MAX_USER_COUNT 100
 #define MAX_TICKET_COUNT 100
 
-void getUserList(Role role);
+int getUserList(enum Role role, User **outArray);
 User getUser(char email[]);
 int getTicketList(char email[], Ticket **array);
 int updateTicket(Ticket *ticket);
