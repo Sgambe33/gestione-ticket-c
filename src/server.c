@@ -18,6 +18,7 @@
  * 2) create ticket
  * 3) get ticket
  * 4) update ticket
+ * 5) get users
  *
  * Each command has a specific payload structure and response format.
  *
@@ -43,6 +44,10 @@
 4) update ticket: payload = Ticket
     Success: ResponseHeader(200, msg="Ticket aggiornato con successo", payloadSize=0)
     Failure: ResponseHeader(500, msg="Errore nell'aggiornamento del ticket", payloadSize=0)
+
+5) get users: payload = User Role
+    Success: ResponseHeader(200, msg="Lista degli utenti", payloadSize=sizeof(User)*n)
+    Failure: ResponseHeader(404, msg="Errore nel recupero degli utenti", payloadSize=0)
 */
 
 void handleClient(int socket)
@@ -65,7 +70,7 @@ void handleClient(int socket)
         if (bytesRead <= 0)
         {
             perror("read serv");
-            break; // Exit loop on error or disconnect
+            break;
         }
 
         printf("Received a new client request:\n");
@@ -174,6 +179,26 @@ void handleClient(int socket)
             else
             {
                 res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
+                write(socket, &res, sizeof(res));
+            }
+            break;
+        }
+        case 5:
+        { // get users
+            enum Role receivedRole;
+            ssize_t roleBytesRead = read(socket, &receivedRole, sizeof(receivedRole));
+            if (roleBytesRead > 0)
+            {
+                User *users = NULL;
+                int count = getUserList(receivedRole, &users);
+                
+                res = (ResponseHeader){htons(200), htonl(count * sizeof(User)), "Lista degli utenti"};
+                write(socket, &res, sizeof(res));
+                write(socket, users, count * sizeof(User));
+            }
+            else
+            {
+                res = (ResponseHeader){htons(404), htonl(0), "Errore nel recupero degli utenti"};
                 write(socket, &res, sizeof(res));
             }
             break;
