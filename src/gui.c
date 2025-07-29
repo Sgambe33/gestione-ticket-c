@@ -296,7 +296,7 @@ void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
 }
 
 
-gboolean ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
     GtkBuilder *builder = GTK_BUILDER(data);
     GtkWidget *title_entry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
     GtkWidget *description_entry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
@@ -348,7 +348,7 @@ gboolean ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer d
         free(title_lower);
         free(filter_lower);
 
-        if (!match) return FALSE;
+        if (!match) return 0;
     }
 
     //OK
@@ -361,30 +361,30 @@ gboolean ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer d
         free(desc_lower);
         free(filter_lower);
 
-        if (!match) return FALSE;
+        if (!match) return 0;
     }
 
     //OK
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority))) {
-        if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0') return FALSE;
+        if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0') return 0;
     }
 
     //OK
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state))) {
-        if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0') return FALSE;
+        if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0') return 0;
     }
 
     //TODO: Populate list with agent's email
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && agent_email && agent_email[0]) {
-        if (g_strcmp0(agent_email, agent) != 0) return FALSE;
+        if (g_strcmp0(agent_email, agent) != 0) return 0;
     }
 
     //OK
     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date))) {
         struct tm *ticket_date = localtime(&creation_date);
         if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday)
-            return FALSE;
+            return 0;
     }
 
-    return TRUE;
+    return 1;
 }

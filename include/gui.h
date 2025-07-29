@@ -18,5 +18,5 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data);
 void onMainWindowShow(GtkWidget *widget, gpointer user_data);
 void onSearchButtonClicked(GtkWidget *widget, gpointer user_data);
 void updateTicketFilter(GtkWidget *widget, gpointer user_data);
-gboolean ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
 #endif // GUI_H
