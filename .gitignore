@@ -57,3 +57,4 @@ client
 .vscode
 CMakeLists.txt
 .idea
+*.glade~
