@@ -39,19 +39,13 @@ int main(int argc, char *argv[])
 
     // Get the login and main window from the UI
     GtkWidget *loginWindow = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
-    if (!loginWindow)
-    {
-        fprintf(stderr, "Could not find 'login_window' in UI file.\n");
-        return 1;
-    }
+    g_signal_connect(loginWindow, "delete-event", G_CALLBACK(onLoginWindowDeleteEvent), NULL);
+
+    GtkWindow *mainWin = GTK_WINDOW(gtk_builder_get_object(builder, "main_window"));
+    g_signal_connect(mainWin, "show", G_CALLBACK(initMainWindow), builder);
 
     GtkWidget *loginButton = GTK_WIDGET(gtk_builder_get_object(builder, "connect_button"));
     g_signal_connect(loginButton, "clicked", G_CALLBACK(onLoginButtonClicked), builder);
-
-    GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
-    g_signal_connect(mainWindow, "show", G_CALLBACK(onMainWindowShow), builder);
-
-    g_signal_connect(loginWindow, "delete-event", G_CALLBACK(onLoginWindowDeleteEvent), NULL);
 
     GtkWidget *loginErrorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
 
