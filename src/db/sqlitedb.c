@@ -65,15 +65,9 @@ static int callbackTicket(void *NotUsed, int argc, char **argv, char **azColName
     tmpTicket->creationDate = argv[3] ? atoi(argv[3]) : 0;
     tmpTicket->priority = atoi(argv[4]);
     tmpTicket->state = atoi(argv[5]);
-    tmpTicket->creator = getUser(argv[6]);
-    if (argv[7] && strlen(argv[7]) > 0)
-    {
-        tmpTicket->assignedAgent = getUser(argv[7]);
-    }
-    else
-    {
-        memset(&tmpTicket->assignedAgent, 0, sizeof(User));
-    }
+    strncpy(tmpTicket->creator, argv[6] ? argv[6] : "", sizeof(tmpTicket->creator) - 1);
+    strncpy(tmpTicket->assignedAgent, argv[7] ? argv[7] : "", sizeof(tmpTicket->assignedAgent) - 1);
+
     result->count++;
 
     return 0;
@@ -166,8 +160,8 @@ int createTicket(Ticket *ticket)
              ticket->creationDate,
              ticket->priority,
              ticket->state,
-             ticket->creator.email,
-             ticket->assignedAgent.email);
+             ticket->creator,
+             ticket->assignedAgent);
     int commandResult = sqlite3_exec(db, sql, callback, 0, &errMsg);
     return commandResult;
 }
@@ -294,7 +288,7 @@ int updateTicket(Ticket *ticket)
              "UPDATE Ticket SET priority = %d, state = %d, assignedAgent = '%s' WHERE id = %d;",
              ticket->priority,
              ticket->state,
-             ticket->assignedAgent.email,
+             ticket->assignedAgent,
              ticket->id);
 
     printf("ticket->id: %d\n", ticket->id);

@@ -41,8 +41,8 @@ typedef struct
     time_t creationDate;
     enum Priority priority;
     enum State state;
-    User creator;
-    User assignedAgent;
+    char creator[64];
+    char assignedAgent[64];
 } __attribute__((packed)) Ticket;
 
 typedef struct
