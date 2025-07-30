@@ -18,9 +18,11 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data);
 void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data);
 void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data);
 void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data);
-void onMainWindowShow(GtkWidget *widget, gpointer user_data);
 void onSearchButtonClicked(GtkWidget *widget, gpointer user_data);
 void updateTicketFilter(GtkWidget *widget, gpointer user_data);
 int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
 void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
+void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data);
+void refreshTicketList();
+void initMainWindow(GtkWidget *window, gpointer user_data);
 #endif // GUI_H
