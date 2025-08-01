@@ -290,6 +290,7 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
     g_signal_connect(gtk_builder_get_object(builder, "add_ticket_button"), "clicked", G_CALLBACK(onAddTicketButtonClicked), builder);
     g_signal_connect(gtk_builder_get_object(builder, "disconnect_button"), "clicked", G_CALLBACK(onDisconnectButtonClicked), builder);
     g_signal_connect(gtk_builder_get_object(builder, "search_button"), "clicked", G_CALLBACK(onSearchButtonClicked), builder);
+    g_signal_connect(gtk_builder_get_object(builder, "refresh_button"), "clicked", G_CALLBACK(refreshTicketList), NULL);
     g_signal_connect(editDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
     g_signal_connect(searchDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
 
