@@ -479,6 +479,7 @@
                 <child>
                   <object class="GtkTreeViewColumn" id="col_desc">
                     <property name="resizable">True</property>
+                    <property name="min-width">300</property>
                     <property name="title">Descrizione</property>
                     <property name="sort-column-id">2</property>
                     <child>
@@ -606,6 +607,7 @@
             <property name="margin-end">30</property>
             <property name="margin-top">10</property>
             <property name="margin-bottom">5</property>
+            <property name="max-length">64</property>
             <property name="caps-lock-warning">False</property>
             <property name="primary-icon-name">x-office-address-book</property>
             <property name="placeholder-text" translatable="yes">Email</property>
@@ -627,6 +629,7 @@
             <property name="margin-end">30</property>
             <property name="margin-top">5</property>
             <property name="margin-bottom">5</property>
+            <property name="max-length">16</property>
             <property name="visibility">False</property>
             <property name="invisible-char">●</property>
             <property name="primary-icon-name">dialog-password</property>
@@ -871,8 +874,8 @@
                     <property name="height-request">150</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
-                    <property name="hexpand">True</property>
                     <property name="vexpand">True</property>
+                    <property name="wrap-mode">word</property>
                     <property name="buffer">placeholder_ticket_description</property>
                   </object>
                 </child>

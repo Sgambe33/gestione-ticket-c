@@ -48,19 +48,22 @@ char *priorityToString(enum Priority priority) {
 }
 
 //CUSTOM RENDERERS
-void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
+                    gpointer data) {
     int priority;
     gtk_tree_model_get(model, iter, COL_PRIORITY, &priority, -1);
     g_object_set(renderer, "text", priorityToString(priority), NULL);
 }
 
-void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
+                 gpointer data) {
     int state;
     gtk_tree_model_get(model, iter, COL_STATE, &state, -1);
     g_object_set(renderer, "text", stateToString(state), NULL);
 }
 
-void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
+                gpointer data) {
     time_t creationDate = 0;
     gtk_tree_model_get(model, iter, COL_CREATIONDATE, &creationDate, -1);
 
@@ -73,6 +76,32 @@ void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel 
     }
 
     g_object_set(renderer, "text", date_buf, NULL);
+}
+
+void on_textbuffer_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar*text, gint len, gpointer user_data) {
+    gint limit = GPOINTER_TO_INT(user_data);
+    gint current_len = gtk_text_buffer_get_char_count(buffer);
+
+    if (current_len >= limit) {
+        g_signal_stop_emission_by_name(buffer, "insert-text");
+        return;
+    }
+
+    if (current_len + len > limit) {
+        gint allowed = limit - current_len;
+
+        // block this handler to prevent multiple assignments
+        g_signal_handlers_block_by_func(buffer, G_CALLBACK(on_textbuffer_insert_text), user_data);
+
+        // insert only the allowed prefix
+        gtk_text_buffer_insert(buffer, location, text, allowed);
+
+        // re-enable this handler
+        g_signal_handlers_unblock_by_func(buffer,G_CALLBACK(on_textbuffer_insert_text),user_data);
+
+        // prevent the original (oversized) insert
+        g_signal_stop_emission_by_name(buffer, "insert-text");
+    }
 }
 
 //WIDGET DELETION HANDLERS
@@ -123,7 +152,7 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
         gtk_widget_show(errorLabel);
     } else {
         GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
-        GtkWidget *mainWin  = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+        GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
 
         gtk_widget_hide(loginWin);
         gtk_widget_show_all(mainWin);
@@ -275,6 +304,7 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     GtkWidget *discardButton = GTK_WIDGET(gtk_builder_get_object(builder, "discard_ticket_button"));
     g_signal_handlers_disconnect_by_func(discardButton, G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
     g_signal_connect(discardButton, "clicked", G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
+    g_signal_connect(gtk_text_view_get_buffer(gtk_builder_get_object(builder, "ticket_description_text")), "insert-text",G_CALLBACK(on_textbuffer_insert_text),GINT_TO_POINTER(2048));
 }
 
 void initMainWindow(GtkWidget *window, gpointer user_data) {
@@ -286,7 +316,7 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
     GtkWidget *searchDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
 
     //Connect signals callbacks
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit),NULL);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     g_signal_connect(gtk_builder_get_object(builder, "add_ticket_button"), "clicked", G_CALLBACK(onAddTicketButtonClicked), builder);
     g_signal_connect(gtk_builder_get_object(builder, "disconnect_button"), "clicked", G_CALLBACK(onDisconnectButtonClicked), builder);
     g_signal_connect(gtk_builder_get_object(builder, "search_button"), "clicked", G_CALLBACK(onSearchButtonClicked), builder);
@@ -305,13 +335,25 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 
     //Add filter model to the tree view
     filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
-    gtk_tree_model_filter_set_visible_func(filterModel,ticketFilterFunction, builder, NULL);
+    gtk_tree_model_filter_set_visible_func(filterModel, ticketFilterFunction, builder, NULL);
     gtk_tree_view_set_model(ticketTreeView, GTK_TREE_MODEL(filterModel));
 
     //Setup custom cell renderers
-    gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
-    gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status")),renderState, NULL, NULL);
-    gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_date")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")),renderDate, NULL, NULL);
+    gtk_tree_view_column_set_cell_data_func(
+        GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")),
+        GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
+    gtk_tree_view_column_set_cell_data_func(
+        GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status")),
+        GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status")), renderState, NULL, NULL);
+    gtk_tree_view_column_set_cell_data_func(
+        GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_date")),
+        GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")), renderDate, NULL, NULL);
+    GtkCellRenderer *renderer_desc = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_desc"));
+    g_object_set(renderer_desc,
+                 "wrap-mode", PANGO_WRAP_WORD_CHAR,  // or PANGO_WRAP_WORD
+                 "wrap-width", 300,                  // adjust to desired pixel width
+                 "ellipsize", PANGO_ELLIPSIZE_END,
+                 NULL);
 
     //Load tickets
     refreshTicketList();
