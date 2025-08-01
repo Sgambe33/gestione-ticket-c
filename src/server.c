@@ -52,19 +52,11 @@
 
 void handleClient(int socket)
 {
-    ResponseHeader res;
-    char email[64];
     while (1)
     {
+        ResponseHeader res;
+
         RequestHeader req;
-
-        fd_set rfds;
-        FD_ZERO(&rfds);
-        FD_SET(socket, &rfds);
-
-        struct timeval tv = {2, 0}; // timeout 2 secondi
-        int retval = select(socket + 1, &rfds, NULL, NULL, &tv);
-
         ssize_t bytesRead = read(socket, &req, sizeof(req));
 
         if (bytesRead <= 0)
@@ -86,10 +78,6 @@ void handleClient(int socket)
             ssize_t emailBytesRead = read(socket, test, payloadSize);
             if (emailBytesRead > 0)
             {
-                // strtok divide la stringa in base al delimitatore. Inserisce \0 dove trova il delimitatore e
-                // restituisce un puntatore all'inizio della stringa (adesso divisa). Al suo interno comunque mantiene un
-                // riferimento all'ultima posizione in cui il delimitatore è stato trovato.
-                // Quindi, se si chiama di nuovo strtok con lo stesso puntatore, riprende da dove aveva lasciato.
                 // Vedi https://stackoverflow.com/a/21097376
                 char *email = strtok(test, "\n");
                 char *password = strtok(NULL, "\n");
@@ -137,6 +125,7 @@ void handleClient(int socket)
         }
         case 3:
         { // get tickets
+            char email[64];
             ssize_t emailBytesRead = read(socket, email, sizeof(email));
             if (emailBytesRead > 0)
             {
@@ -145,12 +134,6 @@ void handleClient(int socket)
                 res = (ResponseHeader){htons(200), htonl(count*sizeof(Ticket)), "Lista dei ticket"};
                 write(socket, &res, sizeof(res));
                 write(socket, tickets, count * sizeof(Ticket));
-            }
-            else if (emailBytesRead == 0)
-            {
-                // TODO: Fetch all tickets for agent
-                res = (ResponseHeader){htons(200), htonl(0), "Lista di tutti i ticket"};
-                write(socket, &res, sizeof(res));
             }
             else
             {
