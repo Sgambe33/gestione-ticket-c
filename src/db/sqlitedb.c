@@ -112,7 +112,7 @@ int createTableTicket()
         "    \"id\" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n"
         "    \"title\" TEXT NOT NULL,\n"
         "    \"description\" TEXT NOT NULL,\n"
-        "    \"creationDate\" INTEGER NOT NULL,\n" // TODO: Usare INTEGER?
+        "    \"creationDate\" INTEGER NOT NULL,\n"
         "    \"priority\" INTEGER NOT NULL,\n"
         "    \"state\" INTEGER NOT NULL,\n"
         "    \"creator\" TEXT NOT NULL,\n"
