@@ -74,12 +74,12 @@ void handleClient(int socket)
         case 1:
         { // login
             int payloadSize = ntohl(req.payloadSize);
-            char test[payloadSize];
-            ssize_t emailBytesRead = read(socket, test, payloadSize);
+            char *credentials[payloadSize];
+            ssize_t emailBytesRead = read(socket, credentials, payloadSize);
             if (emailBytesRead > 0)
             {
                 // Vedi https://stackoverflow.com/a/21097376
-                char *email = strtok(test, "\n");
+                char *email = strtok(credentials, "\n");
                 char *password = strtok(NULL, "\n");
 
                 User dbUser = getUser(email);
@@ -95,8 +95,9 @@ void handleClient(int socket)
                     res = (ResponseHeader){htons(401), htonl(0), "Autenticazione fallita"};
                     write(socket, &res, sizeof(res));
                 }
-                break;
             }
+            free(credentials);
+            break;
         }
         case 2:
         { // create ticket
