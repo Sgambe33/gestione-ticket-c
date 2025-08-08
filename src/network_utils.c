@@ -7,37 +7,46 @@
 void sendRequest(int socket, RequestHeader *req, const void *payload)
 {
     size_t toWrite = sizeof(*req);
-    //Converto l'header in un array di bytes
+    // Converto l'header in un array di bytes
     const uint8_t *hbuf = (const uint8_t *)req;
-    while (toWrite > 0) {
-        //Scrivo finché non esaurisco i byte da scrivere
-        ssize_t w = write(socket, hbuf, toWrite); //write infatti ritorna i byte scritti effettivamente
-        if (w > 0) { //Ho scritto effettivamente
-            hbuf     += w;
-            toWrite -= w;
+    while (toWrite > 0)
+    {
+        // Scrivo finché non esaurisco i byte da scrivere
+        ssize_t written = write(socket, hbuf, toWrite); // write ritorna i byte scritti effettivamente
+        if (written > 0)
+        { // Ho scritto effettivamente
+            hbuf += written;
+            toWrite -= written;
         }
-        else if (w < 0 && errno == EINTR) { //se non riesce (EINTR quando syscall viene interrotta e non può essere ripresa) ritenta
+        else if (written < 0 && errno == EINTR)
+        { // se non riesce (EINTR quando syscall viene interrotta e non può essere ripresa) ritenta
             continue;
         }
-        else { //Altrimenti c'è errore
+        else
+        { // Altrimenti c'è errore
             perror("write header");
             return;
         }
     }
 
-    if (payload) { //Se c'è un payload allora
+    if (payload)
+    { // Se c'è un payload allora
         uint32_t len = ntohl(req->payloadSize);
-        const uint8_t *p = (const uint8_t *)payload; //convertilo in array di byte
-        while (len > 0) { //finché ci sono byte da scrivere
-            ssize_t w = write(socket, p, len); //Scrivili e fai gli stessi controlli
-            if (w > 0) {
-                p   += w;
-                len -= w;
+        const uint8_t *p = (const uint8_t *)payload; // convertilo in array di byte
+        while (len > 0)
+        {                                            // finché ci sono byte da scrivere
+            ssize_t written = write(socket, p, len); // Scrivili e fai gli stessi controlli di prima
+            if (written > 0)
+            {
+                p += written;
+                len -= written;
             }
-            else if (w < 0 && errno == EINTR) {
+            else if (written < 0 && errno == EINTR)
+            {
                 continue;
             }
-            else {
+            else
+            {
                 perror("write payload");
                 return;
             }
@@ -48,35 +57,44 @@ void sendRequest(int socket, RequestHeader *req, const void *payload)
 void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
 {
     size_t toRead = sizeof(*resp);
-    uint8_t *hbuf = (uint8_t *)resp; //stesse cose e stessi controlli ancora
-    while (toRead > 0) {
+    uint8_t *hbuf = (uint8_t *)resp;
+    while (toRead > 0)
+    {
         ssize_t r = read(socket, hbuf, toRead);
-        if (r > 0) {
-            hbuf     += r;
-            toRead  -= r;
+        if (r > 0)
+        {
+            hbuf += r;
+            toRead -= r;
         }
-        else if (r < 0 && errno == EINTR) {
+        else if (r < 0 && errno == EINTR)
+        {
             continue;
         }
-        else {
+        else
+        {
             perror("read header");
             return;
         }
     }
 
-    uint32_t len = ntohl(resp->payloadSize); //se il payload size è impostato ed un buffer (il payload risultante) è stato passato alla funzione
-    if (len > 0 && payloadBuffer) {
-        uint8_t *p = (uint8_t *)payloadBuffer; //Ancora converti in array di byte, leggi, controlla etc...
-        while (len > 0) {
+    uint32_t len = ntohl(resp->payloadSize); // se il payload size è impostato ed un buffer (il payload risultante) è stato passato alla funzione
+    if (len > 0 && payloadBuffer)
+    {
+        uint8_t *p = (uint8_t *)payloadBuffer; // Ancora converti in array di byte, leggi, controlla etc...
+        while (len > 0)
+        {
             ssize_t r = read(socket, p, len);
-            if (r > 0) {
-                p   += r;
+            if (r > 0)
+            {
+                p += r;
                 len -= r;
             }
-            else if (r < 0 && errno == EINTR) {
+            else if (r < 0 && errno == EINTR)
+            {
                 continue;
             }
-            else {
+            else
+            {
                 perror("read payload");
                 return;
             }
