@@ -4,6 +4,13 @@
 #include <errno.h>
 #include "../include/network_utils.h"
 
+/**
+* @brief Send a request over a TCP socket
+* @param socket Socket file descriptor
+* @param req Request header struct to be sent
+* @param payload Optional payload to be sent along the request header 
+* @returns 0 if success, -1 if error
+*/
 int sendRequest(int socket, RequestHeader *req, const void *payload)
 {
     size_t toWrite = sizeof(*req);
@@ -54,6 +61,14 @@ int sendRequest(int socket, RequestHeader *req, const void *payload)
     }
     return 0;
 }
+
+/**
+* @brief Receive a response from a TCP socket
+* @param socket Socket file descriptor
+* @param resp Response header struct to be filled with the received data
+* @param payloadBuffer Optional buffer to receive the payload data
+* @return 0 on success, -1 on error
+*/
 
 int receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
 {
