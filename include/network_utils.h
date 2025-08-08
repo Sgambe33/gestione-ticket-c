@@ -2,6 +2,6 @@
 #define NETWORK_UTILS_H
 #include "models.h"
 
-void sendRequest(int socket, RequestHeader *req, const void *payload);
-void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer);
+int sendRequest(int socket, RequestHeader *req, const void *payload);
+int receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer);
 #endif // NETWORK_UTILS_H

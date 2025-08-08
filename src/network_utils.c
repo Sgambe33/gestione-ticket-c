@@ -4,7 +4,7 @@
 #include <errno.h>
 #include "../include/network_utils.h"
 
-void sendRequest(int socket, RequestHeader *req, const void *payload)
+int sendRequest(int socket, RequestHeader *req, const void *payload)
 {
     size_t toWrite = sizeof(*req);
     // Converto l'header in un array di bytes
@@ -25,7 +25,7 @@ void sendRequest(int socket, RequestHeader *req, const void *payload)
         else
         { // Altrimenti c'è errore
             perror("write header");
-            return;
+            return -1;
         }
     }
 
@@ -48,13 +48,14 @@ void sendRequest(int socket, RequestHeader *req, const void *payload)
             else
             {
                 perror("write payload");
-                return;
+                return -1;
             }
         }
     }
+    return 0;
 }
 
-void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
+int receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
 {
     size_t toRead = sizeof(*resp);
     uint8_t *hbuf = (uint8_t *)resp;
@@ -73,7 +74,7 @@ void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
         else
         {
             perror("read header");
-            return;
+            return -1;
         }
     }
 
@@ -96,8 +97,9 @@ void receiveResponse(int socket, ResponseHeader *resp, void *payloadBuffer)
             else
             {
                 perror("read payload");
-                return;
+                return -1;
             }
         }
     }
+    return 0;
 }
