@@ -258,15 +258,15 @@ int getTicketList(char email[], Ticket **array)
     const User dbUser = getUser(email);
     if (dbUser.role == STANDARD)
     {
-        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\";", email);
+        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE creator = \"%s\" ORDER BY creationDate DESC, state DESC, priority DESC;", email);
     }
     else if (dbUser.role == AGENT)
     {
-        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE assignedAgent = \"%s\";", email);
+        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket WHERE assignedAgent = \"%s\" ORDER BY creationDate DESC, state DESC, priority DESC;", email);
     }
     else
     {
-        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket;");
+        snprintf(sql, sizeof(sql), "SELECT * FROM Ticket ORDER BY creationDate DESC, state DESC, priority DESC;");
     }
 
     commandResult = sqlite3_exec(db, sql, callbackTicket, &ticketResult, &errMsg);
@@ -275,7 +275,7 @@ int getTicketList(char email[], Ticket **array)
     {
         fprintf(stderr, "SQL error: %s\n", errMsg);
         sqlite3_free(errMsg);
-        free(array);
+        free(ticketResult.array);
     }
     *array = ticketResult.array;
     return ticketResult.count;

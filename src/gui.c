@@ -354,6 +354,7 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data)
 
 void initMainWindow(GtkWidget *window, gpointer user_data)
 {
+
     if (initialized)
         return;
     mainWindow = GTK_WINDOW(window);
@@ -363,9 +364,9 @@ void initMainWindow(GtkWidget *window, gpointer user_data)
     GtkWidget *editDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
     GtkWidget *searchDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
     GtkLabel *welcomeLabel = GTK_LABEL(gtk_builder_get_object(builder, "welcome_label"));
-    char welcomeText[256]; // TODO: calcolare dimensione corretta
+    char welcomeText[78];
 
-    snprintf(welcomeText, sizeof(welcomeText), "Benvenuto\\a %s %s", currentUser.name, currentUser.surname);
+    snprintf(welcomeText, sizeof(welcomeText), "Benvenuto/a %s %s", currentUser.name, currentUser.surname);
     gtk_label_set_text(welcomeLabel, welcomeText);
 
     // Connect signals callbacks
@@ -389,9 +390,9 @@ void initMainWindow(GtkWidget *window, gpointer user_data)
         gtk_tree_view_column_set_visible(colCreator, FALSE);
     }
 
-    // Add filter model to the tree view
     filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
-    gtk_tree_model_filter_set_visible_func(filterModel, ticketFilterFunction, builder, NULL);
+    gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(filterModel), ticketFilterFunction, builder, NULL);
+
     gtk_tree_view_set_model(ticketTreeView, GTK_TREE_MODEL(filterModel));
 
     // Setup custom cell renderers
@@ -658,8 +659,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     gtk_window_set_title(GTK_WINDOW(editTicketDialog), "Modifica ticket");
 
     GtkLabel *ticketEditErrorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
-    gtk_widget_hide(GTK_WIDGET(ticketEditErrorLabel));
-
     GtkWidget *priorityComboBox = GTK_WIDGET(gtk_builder_get_object(builder, "priority_combobox"));
     GtkWidget *stateCombobox = GTK_WIDGET(gtk_builder_get_object(builder, "state_combobox"));
     GtkWidget *agentCombobox = GTK_WIDGET(gtk_builder_get_object(builder, "agent_combobox"));
@@ -746,6 +745,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     gtk_widget_set_sensitive(stateCombobox, 1);
 
     gtk_widget_show_all(editTicketDialog);
+    gtk_widget_hide(GTK_WIDGET(ticketEditErrorLabel));
 
     // Connect buttons
     GtkWidget *saveButton = GTK_WIDGET(gtk_builder_get_object(builder, "save_ticket_button"));
