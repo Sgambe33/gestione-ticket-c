@@ -16,6 +16,8 @@
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 #define MAX_CLIENT_CONNECTIONS 100
 
+int serverFD;
+
 static void log_message(const char *level, const char *fmt, ...)
 {
     char ts[20];
@@ -219,13 +221,20 @@ void handleClient(int socket)
     close(socket);
 }
 
+static void terminateServer()
+{
+    shutdown(serverFD, SHUT_RDWR);
+    close(serverFD);
+    exit(0);
+}
+
 int main()
 {
     log_message("INFO", "Starting server...");
     createDb();
     createTables();
 
-    int serverFD = socket(AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
+    serverFD = socket(AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
     if (serverFD < 0)
     {
         log_error("socket()");
@@ -236,6 +245,16 @@ int main()
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1420);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    // Per evitare errore "bind() address already in use" si dice al socket di riutilizzare l'indirizzo e la porta sebbene 
+    // non siano ancora stati chiusi
+    int yes = 1;
+    if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+    {
+        log_error("setsockopt(SO_REUSEADDR)");
+        close(serverFD);
+        return 1;
+    }
 
     if (bind(serverFD, (struct sockaddr *)&addr, sizeof(addr)) < 0)
     {
@@ -250,7 +269,9 @@ int main()
     log_message("INFO", "Server listening on 127.0.0.1:1420");
 
     signal(SIGCHLD, SIG_IGN);
-    
+    signal(SIGINT, terminateServer);
+    signal(SIGTERM, terminateServer);
+
     while (1)
     {
         struct sockaddr_in cli_addr;
@@ -271,6 +292,7 @@ int main()
             handleClient(clientFD);
             exit(0);
         }
+
         close(clientFD);
     }
 
