@@ -3,58 +3,51 @@
 #include <time.h>
 #include <stdint.h>
 
-enum Priority
-{
-    LOW,
-    MEDIUM,
-    HIGH
+enum Priority {
+	LOW,
+	MEDIUM,
+	HIGH
 };
 
-enum State
-{
-    CLOSED,
-    ASSIGNED,
-    OPEN
+enum State {
+	CLOSED,
+	ASSIGNED,
+	OPEN
 };
 
-enum Role
-{
-    STANDARD,
-    AGENT,
-    SUPER_AGENT
+enum Role {
+	STANDARD,
+	AGENT,
+	SUPER_AGENT
 };
 
-typedef struct
-{
-    char name[32];
-    char surname[32];
-    char email[64];
-    char password[16];
-    enum Role role;
+typedef struct {
+	char name[32];
+	char surname[32];
+	char email[64];
+	char password[16];
+	enum Role role;
 } __attribute__((packed)) User;
 
-typedef struct
-{
-    int id;
-    char title[64];
-    char description[2048];
-    time_t creationDate;
-    enum Priority priority;
-    enum State state;
-    char creator[64];
-    char assignedAgent[64];
+typedef struct {
+	int id;
+	char title[64];
+	char description[2048];
+	time_t creationDate;
+	enum Priority priority;
+	enum State state;
+	char creator[64];
+	char assignedAgent[64];
 } __attribute__((packed)) Ticket;
 
-typedef struct
-{
-    uint16_t commandId;   // 2 bytes
-    uint32_t payloadSize; // 4 bytes
+typedef struct {
+	uint16_t commandId; // 2 bytes
+	uint32_t payloadSize; // 4 bytes
 } __attribute__((packed)) RequestHeader;
 
-typedef struct
-{
-    uint16_t statusCode;  // 2 bytes
-    uint32_t payloadSize; // 4 bytes
-    char message[128];    // 128 bytes
+typedef struct {
+	uint16_t statusCode; // 2 bytes
+	uint32_t payloadSize; // 4 bytes
+	char message[128]; // 128 bytes
 } __attribute__((packed)) ResponseHeader;
 #endif // MODELS_H
