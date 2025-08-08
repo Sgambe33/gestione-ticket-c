@@ -24,6 +24,6 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
 void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
 void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data);
 void refreshTicketList();
-void showErrorDialog(GtkWidget *parent, const char *message);
+void showErrorDialog(GtkWindow *parent, const char *message);
 void initMainWindow(GtkWidget *window, gpointer user_data);
 #endif // GUI_H

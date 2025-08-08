@@ -349,7 +349,7 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data)
     GtkWidget *discardButton = GTK_WIDGET(gtk_builder_get_object(builder, "discard_ticket_button"));
     g_signal_handlers_disconnect_by_func(discardButton, G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
     g_signal_connect(discardButton, "clicked", G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
-    g_signal_connect(gtk_text_view_get_buffer(gtk_builder_get_object(builder, "ticket_description_text")), "insert-text", G_CALLBACK(on_textbuffer_insert_text), GINT_TO_POINTER(2048));
+    g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "ticket_description_text"))), "insert-text", G_CALLBACK(on_textbuffer_insert_text), GINT_TO_POINTER(2048));
 }
 
 void initMainWindow(GtkWidget *window, gpointer user_data)
@@ -441,7 +441,7 @@ void refreshTicketList()
     gtk_list_store_clear(store);
 
     uint32_t payloadBytes = ntohl(resp.payloadSize);
-    int nTickets = payloadBytes / sizeof(Ticket);
+    uint32_t nTickets = payloadBytes / sizeof(Ticket);
 
     GtkTreeIter iter;
     for (int i = 0; i < nTickets; i++)
@@ -485,13 +485,13 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data)
     GtkListStore *agentListStore = GTK_LIST_STORE(gtk_builder_get_object(builder, "agents_liststore"));
     gtk_list_store_clear(agentListStore);
 
-    int valid = gtk_tree_model_get_iter_first(listStore, &iter);
+    int valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(listStore), &iter);
     GList *existingAgents = NULL;
 
     while (valid)
     {
         char *agentEmail = NULL;
-        gtk_tree_model_get(listStore, &iter, COL_ASSIGNEDAGENT, &agentEmail, -1);
+        gtk_tree_model_get(GTK_TREE_MODEL(listStore), &iter, COL_ASSIGNEDAGENT, &agentEmail, -1);
 
         if (agentEmail && strlen(agentEmail) > 0 && !g_list_find_custom(existingAgents, agentEmail, (GCompareFunc)g_strcmp0))
         {
@@ -500,7 +500,7 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data)
             gtk_list_store_append(agentListStore, &agentIter);
             gtk_list_store_set(agentListStore, &agentIter, 0, agentEmail, -1);
         }
-        valid = gtk_tree_model_iter_next(listStore, &iter);
+        valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(listStore), &iter);
     }
 }
 
@@ -703,7 +703,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
         }
 
         uint32_t payloadBytes = ntohl(resp.payloadSize);
-        int nAgents = payloadBytes / sizeof(User);
+        uint32_t nAgents = payloadBytes / sizeof(User);
 
         for (int i = 0; i < nAgents; i++)
         {
@@ -830,7 +830,7 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data)
     refreshTicketList();
 }
 
-void showErrorDialog(GtkWidget *parent, const char *message)
+void showErrorDialog(GtkWindow *parent, const char *message)
 {
     GtkWidget *dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "%s", message);
     gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "Impossibile comunicare con il server: disconnettiti e riprova.");
