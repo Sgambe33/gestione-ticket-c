@@ -7,7 +7,7 @@
 
 int getUserList(enum Role role, User **outArray);
 User getUser(char email[]);
-int getTicketList(char email[], Ticket **array);
+int getTicketList(char email[], Ticket **outArray);
 int updateTicket(Ticket *ticket);
 int createTicket(Ticket *ticket);
 int createDb();
