@@ -9,8 +9,10 @@ static gboolean initialized = FALSE;
 static GtkListStore *store;
 static GtkTreeModelFilter *filterModel;
 static GtkTreeView *ticketTreeView;
+static GtkWindow *mainWindow = NULL;
 
-enum Columns {
+enum Columns
+{
     COL_ID,
     COL_TITLE,
     COL_DESCRIPTION,
@@ -21,56 +23,65 @@ enum Columns {
     COL_ASSIGNEDAGENT
 };
 
-char *stateToString(enum State state) {
-    switch (state) {
-        case CLOSED:
-            return "Chiuso";
-        case ASSIGNED:
-            return "Assegnato";
-        case OPEN:
-            return "Aperto";
-        default:
-            return "Sconosciuto";
+char *stateToString(enum State state)
+{
+    switch (state)
+    {
+    case CLOSED:
+        return "Chiuso";
+    case ASSIGNED:
+        return "Assegnato";
+    case OPEN:
+        return "Aperto";
+    default:
+        return "Sconosciuto";
     }
 }
 
-char *priorityToString(enum Priority priority) {
-    switch (priority) {
-        case LOW:
-            return "Bassa";
-        case MEDIUM:
-            return "Media";
-        case HIGH:
-            return "Alta";
-        default:
-            return "Sconosciuta";
+char *priorityToString(enum Priority priority)
+{
+    switch (priority)
+    {
+    case LOW:
+        return "Bassa";
+    case MEDIUM:
+        return "Media";
+    case HIGH:
+        return "Alta";
+    default:
+        return "Sconosciuta";
     }
 }
 
-//CUSTOM RENDERERS
+// CUSTOM RENDERERS
 void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
-                    gpointer data) {
+                    gpointer data)
+{
     int priority;
     gtk_tree_model_get(model, iter, COL_PRIORITY, &priority, -1);
     g_object_set(renderer, "text", priorityToString(priority), NULL);
 }
 
 void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
-                 gpointer data) {
+                 gpointer data)
+{
     int state;
     gtk_tree_model_get(model, iter, COL_STATE, &state, -1);
     g_object_set(renderer, "text", stateToString(state), NULL);
 }
 
 void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter,
-                gpointer data) {
+                gpointer data)
+{
     time_t creationDate = 0;
     gtk_tree_model_get(model, iter, COL_CREATIONDATE, &creationDate, -1);
 
     char date_buf[32] = "Invalid date";
-    if (creationDate > 0) {
+    if (creationDate > 0)
+    {
         struct tm tm;
-        if (localtime_r(&creationDate, &tm)) {
+        if (localtime_r(&creationDate, &tm))
+        {
             strftime(date_buf, sizeof date_buf, "%H:%M %d-%m-%Y", &tm);
         }
     }
@@ -78,16 +89,19 @@ void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel 
     g_object_set(renderer, "text", date_buf, NULL);
 }
 
-void on_textbuffer_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar*text, gint len, gpointer user_data) {
+void on_textbuffer_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len, gpointer user_data)
+{
     gint limit = GPOINTER_TO_INT(user_data);
     gint current_len = gtk_text_buffer_get_char_count(buffer);
 
-    if (current_len >= limit) {
+    if (current_len >= limit)
+    {
         g_signal_stop_emission_by_name(buffer, "insert-text");
         return;
     }
 
-    if (current_len + len > limit) {
+    if (current_len + len > limit)
+    {
         gint allowed = limit - current_len;
 
         // block this handler to prevent multiple assignments
@@ -97,21 +111,24 @@ void on_textbuffer_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gch
         gtk_text_buffer_insert(buffer, location, text, allowed);
 
         // re-enable this handler
-        g_signal_handlers_unblock_by_func(buffer,G_CALLBACK(on_textbuffer_insert_text),user_data);
+        g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(on_textbuffer_insert_text), user_data);
 
         // prevent the original (oversized) insert
         g_signal_stop_emission_by_name(buffer, "insert-text");
     }
 }
 
-//WIDGET DELETION HANDLERS
-gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer data) {
+// WIDGET DELETION HANDLERS
+gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
     gtk_widget_hide(widget);
     return TRUE;
 }
 
-gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
-    if (clientFD >= 0) {
+gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data)
+{
+    if (clientFD >= 0)
+    {
         close(clientFD);
         clientFD = -1;
     }
@@ -120,8 +137,9 @@ gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer us
     return FALSE;
 }
 
-//CALLBACKS
-void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
+// CALLBACKS
+void onLoginButtonClicked(GtkButton *button, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
     GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
@@ -131,7 +149,8 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
     const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
     const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
 
-    if (strlen(email) == 0 || strlen(password) == 0) {
+    if (strlen(email) == 0 || strlen(password) == 0)
+    {
         gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: email e password non possono essere vuoti");
         gtk_widget_show(errorLabel);
         return;
@@ -142,15 +161,27 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
     req.payloadSize = htonl(strlen(email) + strlen(password) + 2);
     char payload[strlen(email) + strlen(password) + 2];
     snprintf(payload, sizeof(payload), "%s\n%s", email, password);
-    sendRequest(clientFD, &req, payload);
+
+    if (sendRequest(clientFD, &req, payload) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante il login");
+        return;
+    }
 
     ResponseHeader resp;
-    receiveResponse(clientFD, &resp, &currentUser);
+    if (receiveResponse(clientFD, &resp, &currentUser) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante il login");
+        return;
+    }
 
-    if (ntohs(resp.statusCode) != 200) {
+    if (ntohs(resp.statusCode) != 200)
+    {
         gtk_label_set_text(GTK_LABEL(errorLabel), resp.message);
         gtk_widget_show(errorLabel);
-    } else {
+    }
+    else
+    {
         GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
         GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
 
@@ -159,7 +190,8 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
     }
 }
 
-void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
 
@@ -167,7 +199,8 @@ void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
     gtk_widget_destroy(mainWindow);
 }
 
-void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
     GtkWidget *descriptionText = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
@@ -180,7 +213,8 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     gtk_text_buffer_get_end_iter(buffer, &end);
     char *description = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
 
-    if (strlen(title) == 0) {
+    if (strlen(title) == 0)
+    {
         gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: il titolo non può essere vuoto");
         gtk_widget_show(errorLabel);
         g_free(description);
@@ -201,15 +235,23 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 
     RequestHeader req = {
         .commandId = htons(2),
-        .payloadSize = htonl(sizeof(newTicket))
-    };
+        .payloadSize = htonl(sizeof(newTicket))};
 
-    sendRequest(clientFD, &req, &newTicket);
+    if (sendRequest(clientFD, &req, &newTicket) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
+        return;
+    }
 
     ResponseHeader resp;
-    receiveResponse(clientFD, &resp, NULL);
+    if (receiveResponse(clientFD, &resp, NULL) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
+        return;
+    }
 
-    if (ntohs(resp.statusCode) != 201) {
+    if (ntohs(resp.statusCode) != 201)
+    {
         gtk_label_set_text(GTK_LABEL(errorLabel), resp.message);
         gtk_widget_show(errorLabel);
         return;
@@ -226,7 +268,8 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     refreshTicketList();
 }
 
-void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
 
     // Clear text entries
@@ -269,7 +312,8 @@ void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
     gtk_widget_hide(searchTicketDialog);
 }
 
-void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
 
     GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
@@ -282,7 +326,8 @@ void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     gtk_widget_hide(editTicketDialog);
 }
 
-void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
     gtk_window_set_title(GTK_WINDOW(editTicketDialog), "Aggiungi ticket");
@@ -304,18 +349,26 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     GtkWidget *discardButton = GTK_WIDGET(gtk_builder_get_object(builder, "discard_ticket_button"));
     g_signal_handlers_disconnect_by_func(discardButton, G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
     g_signal_connect(discardButton, "clicked", G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
-    g_signal_connect(gtk_text_view_get_buffer(gtk_builder_get_object(builder, "ticket_description_text")), "insert-text",G_CALLBACK(on_textbuffer_insert_text),GINT_TO_POINTER(2048));
+    g_signal_connect(gtk_text_view_get_buffer(gtk_builder_get_object(builder, "ticket_description_text")), "insert-text", G_CALLBACK(on_textbuffer_insert_text), GINT_TO_POINTER(2048));
 }
 
-void initMainWindow(GtkWidget *window, gpointer user_data) {
-    if (initialized) return;
+void initMainWindow(GtkWidget *window, gpointer user_data)
+{
+    if (initialized)
+        return;
+    mainWindow = GTK_WINDOW(window);
     GtkBuilder *builder = GTK_BUILDER(user_data);
     ticketTreeView = GTK_TREE_VIEW(gtk_builder_get_object(builder, "treeview_items"));
     store = GTK_LIST_STORE(gtk_builder_get_object(builder, "liststore_items"));
     GtkWidget *editDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
     GtkWidget *searchDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
+    GtkLabel *welcomeLabel = GTK_LABEL(gtk_builder_get_object(builder, "welcome_label"));
+    char welcomeText[256]; // TODO: calcolare dimensione corretta
 
-    //Connect signals callbacks
+    snprintf(welcomeText, sizeof(welcomeText), "Benvenuto\\a %s %s", currentUser.name, currentUser.surname);
+    gtk_label_set_text(welcomeLabel, welcomeText);
+
+    // Connect signals callbacks
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     g_signal_connect(gtk_builder_get_object(builder, "add_ticket_button"), "clicked", G_CALLBACK(onAddTicketButtonClicked), builder);
     g_signal_connect(gtk_builder_get_object(builder, "disconnect_button"), "clicked", G_CALLBACK(onDisconnectButtonClicked), builder);
@@ -324,21 +377,24 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
     g_signal_connect(editDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
     g_signal_connect(searchDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
 
-    //If agent or super agent, handle ticket selection. Otherwise disable creator column
-    if (currentUser.role == SUPER_AGENT || currentUser.role == AGENT) {
+    // If agent or super agent, handle ticket selection. Otherwise disable creator column
+    if (currentUser.role == SUPER_AGENT || currentUser.role == AGENT)
+    {
         g_signal_connect(ticketTreeView, "row-activated", G_CALLBACK(onTicketRowSelected), builder);
         gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "add_ticket_button")), FALSE);
-    } else {
+    }
+    else
+    {
         GtkTreeViewColumn *colCreator = GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_creator"));
         gtk_tree_view_column_set_visible(colCreator, FALSE);
     }
 
-    //Add filter model to the tree view
+    // Add filter model to the tree view
     filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
     gtk_tree_model_filter_set_visible_func(filterModel, ticketFilterFunction, builder, NULL);
     gtk_tree_view_set_model(ticketTreeView, GTK_TREE_MODEL(filterModel));
 
-    //Setup custom cell renderers
+    // Setup custom cell renderers
     gtk_tree_view_column_set_cell_data_func(
         GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")),
         GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
@@ -350,35 +406,45 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
         GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")), renderDate, NULL, NULL);
     GtkCellRenderer *renderer_desc = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_desc"));
     g_object_set(renderer_desc,
-                 "wrap-mode", PANGO_WRAP_WORD_CHAR,  // or PANGO_WRAP_WORD
-                 "wrap-width", 300,                  // adjust to desired pixel width
+                 "wrap-mode", PANGO_WRAP_WORD_CHAR, // or PANGO_WRAP_WORD
+                 "wrap-width", 300,                 // adjust to desired pixel width
                  "ellipsize", PANGO_ELLIPSIZE_END,
                  NULL);
 
-    //Load tickets
+    // Load tickets
     refreshTicketList();
 
     initialized = TRUE;
 }
 
-void refreshTicketList(void) {
-    gtk_list_store_clear(store);
+void refreshTicketList()
+{
 
     RequestHeader req = {
         .commandId = htons(3),
-        .payloadSize = htonl(strlen(currentUser.email) + 1)
-    };
-    sendRequest(clientFD, &req, currentUser.email);
+        .payloadSize = htonl(strlen(currentUser.email) + 1)};
+    if (sendRequest(clientFD, &req, currentUser.email) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante il recupero dei ticket");
+        return;
+    }
 
     ResponseHeader resp;
     Ticket *tickets = malloc(100 * sizeof(Ticket));
-    receiveResponse(clientFD, &resp, tickets);
+    if (receiveResponse(clientFD, &resp, tickets) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante il recupero dei ticket");
+        return;
+    }
+
+    gtk_list_store_clear(store);
 
     uint32_t payloadBytes = ntohl(resp.payloadSize);
     int nTickets = payloadBytes / sizeof(Ticket);
 
     GtkTreeIter iter;
-    for (int i = 0; i < nTickets; i++) {
+    for (int i = 0; i < nTickets; i++)
+    {
         gtk_list_store_append(store, &iter);
         gtk_list_store_set(store, &iter,
                            COL_ID, tickets[i].id,
@@ -394,12 +460,16 @@ void refreshTicketList(void) {
     free(tickets);
 }
 
-void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onSearchButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkWidget *searchTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
     gtk_widget_show_all(searchTicketDialog);
     GtkWidget *searchTicketButton = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_button"));
     GtkWidget *discardTicketButton = GTK_WIDGET(gtk_builder_get_object(builder, "discard_search_button"));
+    GtkWidget *noTicketsFoundLabel = GTK_WIDGET(gtk_builder_get_object(builder, "no_tickets_found_label"));
+    g_object_set_data(G_OBJECT(ticketTreeView), "no_tickets_found_label", noTicketsFoundLabel);
+    gtk_widget_hide(noTicketsFoundLabel);
 
     g_signal_handlers_disconnect_by_func(searchTicketButton, G_CALLBACK(updateTicketFilter), NULL);
     g_signal_connect(searchTicketButton, "clicked", G_CALLBACK(updateTicketFilter), NULL);
@@ -417,12 +487,13 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
     int valid = gtk_tree_model_get_iter_first(listStore, &iter);
     GList *existingAgents = NULL;
 
-    while (valid) {
+    while (valid)
+    {
         char *agentEmail = NULL;
         gtk_tree_model_get(listStore, &iter, COL_ASSIGNEDAGENT, &agentEmail, -1);
 
-        if (agentEmail && strlen(agentEmail) > 0 && !g_list_find_custom(existingAgents, agentEmail,
-                                                                        (GCompareFunc) g_strcmp0)) {
+        if (agentEmail && strlen(agentEmail) > 0 && !g_list_find_custom(existingAgents, agentEmail, (GCompareFunc)g_strcmp0))
+        {
             existingAgents = g_list_append(existingAgents, g_strdup(agentEmail));
             GtkTreeIter agentIter;
             gtk_list_store_append(agentListStore, &agentIter);
@@ -432,12 +503,27 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
     }
 }
 
-void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
+void updateTicketFilter(GtkWidget *widget, gpointer user_data)
+{
+    GtkWidget *noResultLabel = g_object_get_data(G_OBJECT(ticketTreeView), "no_tickets_found_label");
     GtkTreeModelFilter *filter = GTK_TREE_MODEL_FILTER(gtk_tree_view_get_model(ticketTreeView));
     gtk_tree_model_filter_refilter(filter);
+
+    GtkTreeModel *filtered_model = GTK_TREE_MODEL(filter);
+    gint rowsCount = gtk_tree_model_iter_n_children(filtered_model, NULL);
+
+    if (rowsCount == 0)
+    {
+        gtk_widget_show(noResultLabel);
+    }
+    else
+    {
+        gtk_widget_hide(noResultLabel);
+    }
 }
 
-int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
+{
     GtkBuilder *builder = GTK_BUILDER(data);
     GtkWidget *title_entry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
     GtkWidget *description_entry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
@@ -459,7 +545,8 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) 
     GtkTreeModel *combo_model = gtk_combo_box_get_model(GTK_COMBO_BOX(agent_combo));
     char *selected_agent = NULL;
 
-    if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(agent_combo), &combo_iter)) {
+    if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(agent_combo), &combo_iter))
+    {
         gtk_tree_model_get(combo_model, &combo_iter, 0, &selected_agent, -1);
     }
 
@@ -483,7 +570,8 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) 
                        COL_CREATIONDATE, &creation_date,
                        -1);
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_title)) && title_filter[0]) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_title)) && title_filter[0])
+    {
         char *title_lower = g_utf8_strdown(title, -1);
         char *filter_lower = g_utf8_strdown(title_filter, -1);
 
@@ -496,7 +584,8 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) 
             return 0;
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_description)) && description_filter[0]) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_description)) && description_filter[0])
+    {
         char *desc_lower = g_utf8_strdown(desc, -1);
         char *filter_lower = g_utf8_strdown(description_filter, -1);
 
@@ -509,35 +598,40 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) 
             return 0;
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority))) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority)))
+    {
         if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0')
             return 0;
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state))) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state)))
+    {
         if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0')
             return 0;
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && selected_agent != NULL) {
-        if (g_strcmp0(selected_agent, agent) != 0) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && selected_agent != NULL)
+    {
+        if (g_strcmp0(selected_agent, agent) != 0)
+        {
             g_free(selected_agent);
             return 0;
         }
         g_free(selected_agent);
     }
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date))) {
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date)))
+    {
         struct tm *ticket_date = localtime(&creation_date);
-        if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.
-            tm_mday)
+        if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday)
             return 0;
     }
 
     return 1;
 }
 
-void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
+void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
     GtkTreeModel *model = gtk_tree_view_get_model(treeview);
     GtkTreeIter iter;
@@ -560,10 +654,8 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
                        COL_ASSIGNEDAGENT, &agent,
                        -1);
 
-
     GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
     gtk_window_set_title(GTK_WINDOW(editTicketDialog), "Modifica ticket");
-    gtk_widget_show_all(editTicketDialog);
 
     GtkLabel *ticketEditErrorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
     gtk_widget_hide(GTK_WIDGET(ticketEditErrorLabel));
@@ -574,7 +666,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
     GtkWidget *descriptionTextView = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
 
-    //Salviamo i dati del ticket nell'oggetto GObject per poterli recuperare in seguito
+    // Salviamo i dati del ticket nell'oggetto GObject per poterli recuperare in seguito
     g_object_set_data(G_OBJECT(editTicketDialog), "ticket-id", GINT_TO_POINTER(id));
     g_object_set_data_full(G_OBJECT(editTicketDialog), "ticket-creator", g_strdup(currentUser.email), g_free);
 
@@ -585,7 +677,8 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     GtkListStore *agentListStore = GTK_LIST_STORE(gtk_builder_get_object(builder, "agents_liststore"));
     gtk_list_store_clear(agentListStore);
 
-    if (currentUser.role == SUPER_AGENT) {
+    if (currentUser.role == SUPER_AGENT)
+    {
         gtk_widget_set_sensitive(agentCombobox, 1);
 
         GtkTreeIter agent_iter;
@@ -593,28 +686,43 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 
         RequestHeader req = {
             .commandId = htons(5),
-            .payloadSize = htonl(sizeof(role))
-        };
-        sendRequest(clientFD, &req, &role);
+            .payloadSize = htonl(sizeof(role))};
+
+        if (sendRequest(clientFD, &req, &role) < 0)
+        {
+            showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
+            return;
+        }
 
         ResponseHeader resp;
         User *agents = calloc(100, sizeof(User));
-        receiveResponse(clientFD, &resp, agents);
+
+        if (receiveResponse(clientFD, &resp, agents) < 0)
+        {
+            showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
+            return;
+        }
 
         uint32_t payloadBytes = ntohl(resp.payloadSize);
         int nAgents = payloadBytes / sizeof(User);
 
-        for (int i = 0; i < nAgents; i++) {
+        for (int i = 0; i < nAgents; i++)
+        {
             gtk_list_store_append(agentListStore, &agent_iter);
             gtk_list_store_set(agentListStore, &agent_iter, 0, agents[i].email, -1);
         }
 
-        if (agent && strlen(agent) > 0) {
+        if (agent && strlen(agent) > 0)
+        {
             gtk_combo_box_set_active_id(GTK_COMBO_BOX(agentCombobox), agent);
-        } else {
+        }
+        else
+        {
             gtk_combo_box_set_active(GTK_COMBO_BOX(agentCombobox), -1);
         }
-    } else {
+    }
+    else
+    {
         gtk_widget_set_sensitive(agentCombobox, 0);
 
         GtkTreeIter agent_iter;
@@ -637,6 +745,8 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     gtk_widget_set_sensitive(priorityComboBox, 1);
     gtk_widget_set_sensitive(stateCombobox, 1);
 
+    gtk_widget_show_all(editTicketDialog);
+
     // Connect buttons
     GtkWidget *saveButton = GTK_WIDGET(gtk_builder_get_object(builder, "save_ticket_button"));
     g_signal_handlers_disconnect_by_func(saveButton, G_CALLBACK(onSaveEditedTicketButtonClicked), builder);
@@ -652,10 +762,10 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
     g_free(agent);
 }
 
-void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
+void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data)
+{
     GtkBuilder *builder = GTK_BUILDER(user_data);
 
-    // 1) Get all the widgets
     GtkWidget *dialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
     GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
     GtkWidget *descriptionText = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
@@ -664,7 +774,6 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_combobox"));
     GtkLabel *errorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
 
-    // 3) Extract new values
     const char *new_title = gtk_entry_get_text(GTK_ENTRY(titleEntry));
 
     GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionText));
@@ -680,7 +789,6 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
     gint ticket_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
     const char *creator = g_object_get_data(G_OBJECT(dialog), "ticket-creator");
 
-    // 5) Build the Ticket struct
     Ticket edited = {0};
     edited.id = ticket_id;
     strncpy(edited.title, new_title, sizeof(edited.title) - 1);
@@ -693,22 +801,40 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 
     g_free(new_desc);
 
-    // 6) Send update request
     RequestHeader req = {
-        .commandId = htons(4), // your “update ticket” ID
-        .payloadSize = htonl(sizeof(Ticket))
-    };
-    sendRequest(clientFD, &req, &edited);
+        .commandId = htons(4),
+        .payloadSize = htonl(sizeof(Ticket))};
+
+    if (sendRequest(clientFD, &req, &edited) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
+        return;
+    }
 
     ResponseHeader resp;
-    receiveResponse(clientFD, &resp, NULL);
-    if (ntohs(resp.statusCode) != 200) {
+
+    if (receiveResponse(clientFD, &resp, NULL) < 0)
+    {
+        showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
+        return;
+    }
+
+    if (ntohs(resp.statusCode) != 200)
+    {
         gtk_label_set_text(errorLabel, resp.message);
         gtk_widget_show(GTK_WIDGET(errorLabel));
         return;
     }
 
-    // 7) Success! close dialog and reload list
     gtk_widget_hide(dialog);
     refreshTicketList();
+}
+
+void showErrorDialog(GtkWidget *parent, const char *message)
+{
+    GtkWidget *dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "%s", message);
+    gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "Impossibile comunicare con il server: disconnettiti e riprova.");
+    gtk_window_set_title(GTK_WINDOW(dialog), "Errore");
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
 }
