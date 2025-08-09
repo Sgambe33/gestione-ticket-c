@@ -210,7 +210,7 @@ int getUserList(enum Role role, User **outArray) {
  * @param outArray Pointer to an array of Ticket structs to be filled with the retrieved tickets
  * @returns Number of tickets found on success, -1 on error
  */
-int getTicketList(char email[], Ticket **outArray) {
+int getTicketList(const char email[], Ticket **outArray) {
 	Ticket *array = calloc(MAX_TICKET_COUNT, sizeof(Ticket));
 
 	sqlite3_stmt *stmt;

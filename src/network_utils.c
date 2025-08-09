@@ -60,7 +60,7 @@ int sendRequest(const int socket, const RequestHeader *req, const void *payload)
 * @param payloadBuffer Optional buffer to receive the payload data
 * @return 0 on success, -1 on error
 */
-int receiveResponse(const int socket, const ResponseHeader *resp, void *payloadBuffer) {
+int receiveResponse(const int socket, const ResponseHeader *resp, const void *payloadBuffer) {
 	size_t toRead = sizeof(*resp);
 	uint8_t *hbuf = (uint8_t *) resp;
 	while (toRead > 0) {

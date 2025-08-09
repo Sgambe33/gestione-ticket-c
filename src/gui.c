@@ -22,7 +22,7 @@ enum Columns {
 	COL_ASSIGNEDAGENT
 };
 
-static char *stateToString(const enum State state) {
+char *stateToString(const enum State state) {
 	switch (state) {
 		case CLOSED:
 			return "Chiuso";
@@ -35,7 +35,7 @@ static char *stateToString(const enum State state) {
 	}
 }
 
-static char *priorityToString(const enum Priority priority) {
+char *priorityToString(const enum Priority priority) {
 	switch (priority) {
 		case LOW:
 			return "Bassa";
@@ -49,19 +49,19 @@ static char *priorityToString(const enum Priority priority) {
 }
 
 // CUSTOM RENDERERS
-static void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
 	int priority;
 	gtk_tree_model_get(model, iter, COL_PRIORITY, &priority, -1);
 	g_object_set(renderer, "text", priorityToString(priority), NULL);
 }
 
-static void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
 	int state;
 	gtk_tree_model_get(model, iter, COL_STATE, &state, -1);
 	g_object_set(renderer, "text", stateToString(state), NULL);
 }
 
-static void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
 	time_t creationDate = 0;
 	gtk_tree_model_get(model, iter, COL_CREATIONDATE, &creationDate, -1);
 
@@ -76,7 +76,7 @@ static void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTre
 	g_object_set(renderer, "text", date_buf, NULL);
 }
 
-static void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
+void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
 	const gint limit = GPOINTER_TO_INT(user_data);
 	const gint currentLength = gtk_text_buffer_get_char_count(buffer);
 
