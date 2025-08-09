@@ -14,6 +14,10 @@ Ticket ticketList[MAX_TICKET_COUNT];
 int userCount = 0;
 int ticketCount = 0;
 
+/**
+* @brief Open (or create if not exists) the application database file
+* @returns SQLITE_OK(0) on success, SQLite error code otherwise
+*/
 int createDb() {
 	commandResult = sqlite3_open("tickets.db", &db);
 	if (commandResult != SQLITE_OK) {
@@ -22,6 +26,10 @@ int createDb() {
 	return commandResult;
 }
 
+/**
+ * @brief Create the User tabel if it doesn't exist
+ * @returns SQLITE_OK(0) on success, SQLite error code otherwise
+ */
 int createTableUser() {
 	const char *sqlUser =
 			"CREATE TABLE IF NOT EXISTS \"User\" ("
@@ -42,6 +50,10 @@ int createTableUser() {
 	return commandResult;
 }
 
+/**
+ * @brief Create the Ticket table if it doesn't exist
+ * @returns SQLITE_OK(0) on success, SQLite error code otherwise
+ */
 int createTableTicket() {
 	const char *sqlTicket =
 			"CREATE TABLE IF NOT EXISTS \"Ticket\" (\n"
@@ -67,6 +79,10 @@ int createTableTicket() {
 	return commandResult;
 }
 
+/**
+ * @brief Create the User and Ticket tables if they don't exist
+ * @return SQLITE_OK(0) on success, SQLite error code otherwise
+ */
 int createTables() {
 	int rcUser = createTableUser();
 	if (rcUser != SQLITE_OK) {
@@ -81,6 +97,11 @@ int createTables() {
 	return SQLITE_OK;
 }
 
+/**
+ * @brief Insert a new ticket record into the Ticket table
+ * @param ticket Pointer to a Ticket struct containing the ticket data to insert.
+ * @returns SQLITE_OK(0) on success, SQLite error code otherwise
+ */
 int createTicket(Ticket *ticket) {
 	char sql[4096];
 	snprintf(sql, sizeof(sql),
@@ -91,9 +112,19 @@ int createTicket(Ticket *ticket) {
 	         ticket->priority, ticket->state, ticket->creator,
 	         ticket->assignedAgent);
 	int commandResult = sqlite3_exec(db, sql, NULL, 0, &errMsg);
+	if (commandResult != SQLITE_OK) {
+		fprintf(stderr, "SQL error while inserting ticket: %s\n", errMsg);
+		sqlite3_free(errMsg);
+		return commandResult;
+	}
 	return commandResult;
 }
 
+/**
+ * @brief Retrieve a user from the User table by email
+ * @param email Email of the user to retrieve
+ * @returns User struct filled with user data on success, empty User struct otwerwise
+ */
 User getUser(const char email[]) {
 	// NOTA: Usare stmt permette un controllo più preciso e si evita di usare il
 	// callback che è una palla per 1 solo
@@ -127,6 +158,12 @@ User getUser(const char email[]) {
 	return user;
 }
 
+/**
+ * @brief Retrieve a list of users filtered by user role
+ * @param role Role to filter users by
+ * @param outArray Pointer to an array of User structs to be filled with the retrieved users
+ * @returns Number of users found on success, -1 on error 
+ */
 int getUserList(enum Role role, User **outArray) {
 	User *array = calloc(MAX_USER_COUNT, sizeof(User)); // calloc allocates and initializes to 0
 
@@ -167,6 +204,12 @@ int getUserList(enum Role role, User **outArray) {
 	return count;
 }
 
+/**
+ * @brief Retrieve a list of tickets filtered by user email
+ * @param email Email of the user to filter tickets by
+ * @param outArray Pointer to an array of Ticket structs to be filled with the retrieved tickets
+ * @returns Number of tickets found on success, -1 on error
+ */
 int getTicketList(char email[], Ticket **outArray) {
 	Ticket *array = calloc(MAX_TICKET_COUNT, sizeof(Ticket));
 
@@ -219,6 +262,11 @@ int getTicketList(char email[], Ticket **outArray) {
 	return count;
 }
 
+/**
+ * @brief Update the priority, state, and assigned agent of a ticket in Ticket table
+ * @param ticket Pointer to a Ticket struct containing the updated ticket data
+ * @returns SQLITE_OK(0) on success, SQLite error code otherwise
+ */
 int updateTicket(Ticket *ticket) {
 	char sql[512];
 	snprintf(sql, sizeof(sql), "UPDATE Ticket SET priority = %d, state = %d, assignedAgent = '%s' WHERE id = %d;", ticket->priority, ticket->state, ticket->assignedAgent, ticket->id);
