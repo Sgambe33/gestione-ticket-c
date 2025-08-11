@@ -9,10 +9,6 @@
 sqlite3 *db;
 char *errMsg = 0;
 int commandResult;
-User userList[MAX_USER_COUNT];
-Ticket ticketList[MAX_TICKET_COUNT];
-int userCount = 0;
-int ticketCount = 0;
 
 /**
 * @brief Open (or create if not exists) the application database file
