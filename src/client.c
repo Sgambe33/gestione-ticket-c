@@ -12,6 +12,13 @@
 
 #define DEFAULT_PROTOCOL 0 // Defaults to TCP
 
+/**
+ * @brief Callback for the login window delete event; close the client socket and terminate the GTK main loop
+ * @param widget Pointer to the GtkWidget receiving the the event (the login window) - not used
+ * @param event Pointer to the GdkEvent triggering the delete event - not used
+ * @param user_data Pointer to user data passed during signal connection - not used
+ * @returns FALSE
+ */
 gboolean onLoginWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
 	if (clientFD >= 0) {
 		close(clientFD);
