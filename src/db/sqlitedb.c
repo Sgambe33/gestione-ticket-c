@@ -207,7 +207,9 @@ int getUserList(enum Role role, User **outArray) {
  * @returns Number of tickets found on success, -1 on error
  */
 int getTicketList(const char email[], Ticket **outArray) {
-	Ticket *array = calloc(MAX_TICKET_COUNT, sizeof(Ticket));
+	int currentMaxTickets = 4;
+	int currentTickets = 0;
+	Ticket *array = calloc(currentMaxTickets, sizeof(Ticket));
 
 	sqlite3_stmt *stmt;
 	int rc = 0;
@@ -229,13 +231,8 @@ int getTicketList(const char email[], Ticket **outArray) {
 		return -1;
 	}
 
-	int count = 0;
 	while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-		if (count >= MAX_TICKET_COUNT) {
-			break;
-		}
-
-		Ticket *t = &array[count++];
+		Ticket *t = &array[currentTickets++];
 		t->id = sqlite3_column_int(stmt, 0);
 		strncpy(t->title, (const char *) sqlite3_column_text(stmt, 1), sizeof(t->title) - 1);
 		strncpy(t->description, (const char *) sqlite3_column_text(stmt, 2), sizeof(t->description) - 1);
@@ -244,6 +241,11 @@ int getTicketList(const char email[], Ticket **outArray) {
 		t->state = sqlite3_column_int(stmt, 5);
 		strncpy(t->creator, (const char *) sqlite3_column_text(stmt, 6), sizeof(t->creator) - 1);
 		strncpy(t->assignedAgent, (const char *) sqlite3_column_text(stmt, 7), sizeof(t->assignedAgent) - 1);
+
+		if(currentMaxTickets - currentTickets < 2) {
+			currentMaxTickets *= 2;
+			array = realloc(array, currentMaxTickets * sizeof(Ticket));
+		}
 	}
 
 	if (rc != SQLITE_DONE) {
@@ -255,7 +257,7 @@ int getTicketList(const char email[], Ticket **outArray) {
 
 	sqlite3_finalize(stmt);
 	*outArray = array;
-	return count;
+	return currentTickets;
 }
 
 /**
