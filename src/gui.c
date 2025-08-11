@@ -49,19 +49,43 @@ char *priorityToString(const enum Priority priority) {
 }
 
 // CUSTOM RENDERERS
-void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+/**
+ * @brief Set the renderer's text based on the priority of a row in a model
+ * @param col Pointer to the GtkTreeViewColumn associated with the renderer - not used
+ * @param renderer Pointer to the GtkCellRenderer used to draw the cell
+ * @param model Pointer to the GtkTreeModel containing the data
+ * @param iter Pointer to the GtkTreeIter indicating the current row in the model
+ * @param user_data Pointer to additional user data - not used
+ */
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
 	int priority;
 	gtk_tree_model_get(model, iter, COL_PRIORITY, &priority, -1);
 	g_object_set(renderer, "text", priorityToString(priority), NULL);
 }
 
-void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+/**
+ * @brief Set the renderer's text based on the state of a row in a model
+ * @param col Pointer to the GtkTreeViewColumn associated with the renderer - not used
+ * @param renderer Pointer to the GtkCellRenderer used to draw the cell
+ * @param model Pointer to the GtkTreeModel containing the data
+ * @param iter Pointer to the GtkTreeIter indicating the current row in the model
+ * @param user_data Pointer to additional user data - not used
+ */
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
 	int state;
 	gtk_tree_model_get(model, iter, COL_STATE, &state, -1);
 	g_object_set(renderer, "text", stateToString(state), NULL);
 }
 
-void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
+/**
+ * @brief Set the renderer's text to a formatted creation date from the model
+ * @param col Pointer to the GtkTreeViewColumn associated with the renderer - not used
+ * @param renderer Pointer to the GtkCellRenderer used to draw the cell
+ * @param model Pointer to the GtkTreeModel containing the data
+ * @param iter Pointer to the GtkTreeIter indicating the current row in the model
+ * @param user_data Pointer to additional user data - not used
+ */
+void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
 	time_t creationDate = 0;
 	gtk_tree_model_get(model, iter, COL_CREATIONDATE, &creationDate, -1);
 
@@ -76,6 +100,14 @@ void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel 
 	g_object_set(renderer, "text", date_buf, NULL);
 }
 
+/**
+ * @brief Limit text insertion into a GtkTextBuffer to a maximum character count
+ * @param buffer Pointer to the GtkTextBuffer receiving the text
+ * @param location Pointer to a GtkTextIter indicating where the insertion occurs
+ * @param text Pointer to the UTF_8 text being inserted
+ * @param len Number of bytes in @p text (not necessarily characters).
+ * @param user_data Pointer containing the character limit, passed as a GPOINTER_TO_INT
+ */
 void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
 	const gint limit = GPOINTER_TO_INT(user_data);
 	const gint currentLength = gtk_text_buffer_get_char_count(buffer);
@@ -103,11 +135,26 @@ void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const 
 }
 
 // WIDGET DELETION HANDLERS
+
+/**
+ * @brief Handle the delete-event signal by hiding instead of destroying it.
+ * @param widget Pointer to the GtkWidget that received the delete-event
+ * @param event Pointer to the GdkEvent triggering the signal (destroying the window) - not used
+ * @param data Pointer to additional user data - not used
+ * @returns TRUE to stop further handling of the event and prevent the dafault destruction behavior
+ */
 gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer data) {
 	gtk_widget_hide(widget);
 	return TRUE;
 }
 
+/**
+ * @brief Handle the main window's delete-event by closing the client connection and terminating the GTK main loop
+ * @param widget Pointer to the GtkWidget that received the delete-event
+ * @param event Pointer to the GdkEvent triggering the signal (destroying the window) - not used
+ * @param user_data Pointer to additional user data - not used
+ * @returns FALSE to propagate the event further and allow the default destruction behavior
+ */
 gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
 	if (clientFD >= 0) {
 		close(clientFD);
@@ -119,6 +166,12 @@ gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer us
 }
 
 // CALLBACKS
+
+/**
+ * @brief Callback for the login button click event; handles user login
+ * @param button Pointer to the GtkButton that was clicked (the login button)
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
@@ -164,6 +217,11 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 	}
 }
 
+/**
+ * @brief Callaback for the disconnect button click event
+ * @param widget Pointer to the GtkWidget that was clicked (the disconnect button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
@@ -172,6 +230,11 @@ void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
 	gtk_widget_destroy(mainWindow);
 }
 
+/**
+ * @brief Callback for the save ticket button click event
+ * @param widget Pointer to the GtkWidget that was clicked (the save ticket button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
@@ -234,6 +297,11 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	refreshTicketList();
 }
 
+/**
+ * @brief Callback for the discard search button click event
+ * @param widget Pointer to the GtkWidget that was clicked (the discard search button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 
@@ -277,6 +345,11 @@ void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	gtk_widget_hide(searchTicketDialog);
 }
 
+/**
+ * @brief Callback for the discard add ticket button click event
+ * @param widget Pointer to the GtkWidget that was clicked (the discard add ticket button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 
@@ -290,6 +363,11 @@ void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	gtk_widget_hide(editTicketDialog);
 }
 
+/**
+ * @brief Callback for the add ticket button click event
+ * @param widget Pointer to the GtkWidget that was clicked (the discard add ticket button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
@@ -315,6 +393,11 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "ticket_description_text"))), "insert-text", G_CALLBACK(onTextbufferInsertText), GINT_TO_POINTER(2048));
 }
 
+/**
+ * @brief Initialize the main application window and its related UI components
+ * @param window Pointer to the GtkWidget representing the main application window
+ * @param user_data Pointer to user data passed during initialization
+ */
 void initMainWindow(GtkWidget *window, gpointer user_data) {
 	if (initialized) {
 		return;
@@ -372,6 +455,12 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	initialized = TRUE;
 }
 
+/**
+ * @brief Request and refresh the ticket list from the server
+ * @warning The function allocates temporary memory for up to 100 tickets,
+ *          which is freed before returning. If more than 100 tickets exist,
+ *          the extra tickets will not be retrieved.
+ */
 void refreshTicketList() {
 	RequestHeader req = {htons(3), htonl(strlen(currentUser.email) + 1)};
 	if (sendRequest(clientFD, &req, currentUser.email) < 0) {
@@ -408,6 +497,11 @@ void refreshTicketList() {
 	free(tickets);
 }
 
+/**
+ * @brief Handle the search button click event by displaying the search ticket dialog, setting up related UI elements, and populating the agent list with unique assigned agent emails from the ticket list
+ * @param widget Pointer to the GtkWidget that triggered the callback (the search button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *searchTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
@@ -446,6 +540,11 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	}
 }
 
+/**
+ * @brief Callback for updating the ticket filter and showing/hiding the "no results" label
+ * @param widget Pointer to the GtkWidget that triggered the callback (the search ticket button) - not used
+ * @param user_data Pointer passed during signal connection - not used
+ */
 void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *noResultLabel = g_object_get_data(G_OBJECT(ticketTreeView), "no_tickets_found_label");
 	GtkTreeModelFilter *filter = GTK_TREE_MODEL_FILTER(gtk_tree_view_get_model(ticketTreeView));
@@ -461,8 +560,15 @@ void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
 	}
 }
 
-int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) {
-	GtkBuilder *builder = GTK_BUILDER(data);
+/**
+ * @brief Filter function for the ticket list rows based on active search criteria
+ * @param model Pointer to the GtkTreeModel containing the ticket data
+ * @param iter Pointer to a GtkTreeIter for the current row being tested
+ * @param user_data Pointer to user data passed during filter setup
+ * @returns 1 if the row matches the filters, 0 otherwise
+ */
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
+	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkWidget *title_entry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
 	GtkWidget *description_entry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
 	GtkWidget *priority_combo = GTK_WIDGET(gtk_builder_get_object(builder, "priority_filter_combobox"));
@@ -560,6 +666,13 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data) 
 	return 1;
 }
 
+/**
+ * @brief Callback for handling selection of a ticket row in the ticket list
+ * @param treeview Pointer to the GtkTreeView containing the ticket rows
+ * @param path Pointer to the GtkTreePath of the selected row
+ * @param column Pointer to the GtkTreeViewColumn that was clicked - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
@@ -679,6 +792,11 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	g_free(agent);
 }
 
+/**
+ * @brief Callback for the save button in the edit ticket dialog; send updated ticket data to the server
+ * @param widget Pointer to the GtkWidget that was clicked (the save button) - not used
+ * @param user_data Pointer to user data passed during signal connection
+ */
 void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 
@@ -741,6 +859,11 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	refreshTicketList();
 }
 
+/**
+ * @brief Display an error dialog with a custom message
+ * @param parent Pointer to the parent GtkWindow for the dialog
+ * @param message Error message text to display in the dialog
+ */
 void showErrorDialog(GtkWindow *parent, const char *message) {
 	GtkWidget *dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "%s", message);
 	gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "Impossibile comunicare con il server: disconnettiti e riprova.");
