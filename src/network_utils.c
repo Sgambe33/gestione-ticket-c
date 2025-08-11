@@ -64,11 +64,11 @@ int receiveResponse(const int socket, const ResponseHeader *resp, const void *pa
 	size_t toRead = sizeof(*resp);
 	uint8_t *hbuf = (uint8_t *) resp;
 	while (toRead > 0) {
-		ssize_t r = read(socket, hbuf, toRead);
-		if (r > 0) {
-			hbuf += r;
-			toRead -= r;
-		} else if (r < 0 && errno == EINTR) {
+		ssize_t bytesRead = read(socket, hbuf, toRead);
+		if (bytesRead > 0) {
+			hbuf += bytesRead;
+			toRead -= bytesRead;
+		} else if (bytesRead < 0 && errno == EINTR) {
 			continue;
 		} else {
 			perror("read header");
@@ -78,13 +78,13 @@ int receiveResponse(const int socket, const ResponseHeader *resp, const void *pa
 
 	uint32_t len = ntohl(resp->payloadSize); // se il payload size è impostato ed un buffer (il payload risultante) è stato passato alla funzione
 	if (len > 0 && payloadBuffer) {
-		uint8_t *p = (uint8_t *) payloadBuffer; // Ancora converti in array di byte, leggi, controlla etc...
+		uint8_t *pBuffer = (uint8_t *) payloadBuffer; // Ancora converti in array di byte, leggi, controlla etc...
 		while (len > 0) {
-			ssize_t r = read(socket, p, len);
-			if (r > 0) {
-				p += r;
-				len -= r;
-			} else if (r < 0 && errno == EINTR) {
+			ssize_t bytesRead = read(socket, pBuffer, len);
+			if (bytesRead > 0) {
+				pBuffer += bytesRead;
+				len -= bytesRead;
+			} else if (bytesRead < 0 && errno == EINTR) {
 				continue;
 			} else {
 				perror("read payload");
