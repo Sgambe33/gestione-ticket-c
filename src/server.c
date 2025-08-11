@@ -13,8 +13,8 @@
 #include "../include/models.h"
 #include "../include/db_utils.h"
 
-#define DEFAULT_PROTOCOL 0 // Defaults to TCP
-#define MAX_CLIENT_CONNECTIONS 100
+#define DEFAULT_PROTOCOL 0
+#define MAX_PENDING_CONNECTIONS 100
 
 int serverFD;
 
@@ -27,9 +27,8 @@ int serverFD;
 static void log_message(const char *level, const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
-	struct tm tm;
-	localtime_r(&now, &tm);
-	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
+	struct tm *tm = localtime(&now);
+	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
 
 	fprintf(stderr, "%s [%s] ", ts, level);
 	va_list ap;
@@ -47,9 +46,8 @@ static void log_message(const char *level, const char *fmt, ...) {
 static void log_error(const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
-	struct tm tm;
-	localtime_r(&now, &tm);
-	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
+	struct tm *tm = localtime(&now);
+	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
 
 	fprintf(stderr, "%s [ERROR] ", ts);
 	va_list ap;
@@ -98,7 +96,7 @@ void handleClient(const int socket) {
 		log_message("INFO", "Received cmd=%u payloadSize=%u on fd=%d", cmd, payloadSize, socket);
 
 		switch (cmd) {
-			case 1: // login
+			case 1:
 			{
 				if (payloadSize == 0) {
 					log_error("Empty login payload from fd=%d", socket);
@@ -129,7 +127,7 @@ void handleClient(const int socket) {
 				break;
 			}
 
-			case 2: // create ticket
+			case 2:
 			{
 				Ticket ticket;
 				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
@@ -149,7 +147,7 @@ void handleClient(const int socket) {
 				break;
 			}
 
-			case 3: // get tickets
+			case 3:
 			{
 				char email[64] = {0};
 				if (read(socket, email, sizeof(email)) <= 0) {
@@ -170,7 +168,7 @@ void handleClient(const int socket) {
 				}
 				break;
 			}
-			case 4: // update ticket
+			case 4:
 			{
 				Ticket ticket;
 				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
@@ -190,7 +188,7 @@ void handleClient(const int socket) {
 				break;
 			}
 
-			case 5: // get users
+			case 5:
 			{
 				enum Role role;
 				if (read(socket, &role, sizeof(role)) != (ssize_t) sizeof(role)) {
@@ -245,8 +243,6 @@ int main() {
 	addr.sin_port = htons(1420);
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	// To avoid "bind() address already in use" error, we tell the socket to reuse the address
-	// and port even if they are not yet closed
 	const int yes = 1;
 	if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
 		log_error("setsockopt(SO_REUSEADDR)");
@@ -258,7 +254,7 @@ int main() {
 		log_error("bind()");
 		return 1;
 	}
-	if (listen(serverFD, MAX_CLIENT_CONNECTIONS) < 0) {
+	if (listen(serverFD, MAX_PENDING_CONNECTIONS) < 0) {
 		log_error("listen()");
 		return 1;
 	}

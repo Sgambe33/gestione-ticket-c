@@ -10,7 +10,7 @@
 #include "../include/models.h"
 #include "../include/gui.h"
 
-#define DEFAULT_PROTOCOL 0 // Defaults to TCP
+#define DEFAULT_PROTOCOL 0
 
 /**
  * @brief Callback for the login window delete event; close the client socket and terminate the GTK main loop
@@ -39,7 +39,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	// Get the login and main window from the UI
 	GtkWidget *loginWindow = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
 	g_signal_connect(loginWindow, "delete-event", G_CALLBACK(onLoginWindowDeleteEvent), NULL);
 
@@ -56,16 +55,15 @@ int main(int argc, char *argv[]) {
 
 	int result;
 	const unsigned short int port = 1420;
-	struct sockaddr_in serverINETAddress; /*Server address*/
+	struct sockaddr_in serverINETAddress;
 	const struct sockaddr *serverSockAddrPtr = (struct sockaddr *) &serverINETAddress;
 	const int serverLen = sizeof(serverINETAddress);
 
 	serverINETAddress.sin_family = AF_INET;
 	serverINETAddress.sin_port = htons(port);
-	serverINETAddress.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // INADDR_LOOPBACK == 127.0.0.1
+	serverINETAddress.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	clientFD = socket(AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
 
-	// Connect to the server
 	do {
 		result = connect(clientFD, serverSockAddrPtr, serverLen);
 		printf("Non connesso...\n");

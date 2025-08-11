@@ -49,6 +49,7 @@ char *priorityToString(const enum Priority priority) {
 }
 
 // CUSTOM RENDERERS
+
 /**
  * @brief Set the renderer's text based on the priority of a row in a model
  * @param col Pointer to the GtkTreeViewColumn associated with the renderer - not used
@@ -119,17 +120,9 @@ void onTextBufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const 
 
 	if (currentLength + len > limit) {
 		const gint allowed = limit - currentLength;
-
-		// block this handler to prevent multiple assignments
 		g_signal_handlers_block_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
-
-		// insert only the allowed prefix
 		gtk_text_buffer_insert(buffer, location, text, allowed);
-
-		// re-enable this handler
 		g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
-
-		// prevent the original (oversized) insert
 		g_signal_stop_emission_by_name(buffer, "insert-text");
 	}
 }
@@ -617,8 +610,9 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 		free(title_lower);
 		free(filter_lower);
 
-		if (!match)
+		if (!match){
 			return 0;
+		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_description)) && description_filter[0]) {
@@ -630,18 +624,21 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 		free(desc_lower);
 		free(filter_lower);
 
-		if (!match)
+		if (!match){
 			return 0;
+		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority))) {
-		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0')
+		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0'){
 			return 0;
+		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state))) {
-		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0')
+		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0'){
 			return 0;
+		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && selected_agent != NULL) {
@@ -654,8 +651,9 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date))) {
 		struct tm *ticket_date = localtime(&creation_date);
-		if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday)
+		if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday){
 			return 0;
+		}
 	}
 
 	return 1;
@@ -673,8 +671,9 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	GtkTreeIter iter;
 
-	if (!gtk_tree_model_get_iter(model, &iter, path))
+	if (!gtk_tree_model_get_iter(model, &iter, path)){
 		return;
+	}
 
 	gint id, priority, state;
 	gchar *title = NULL, *description = NULL, *agent = NULL, *creator = NULL;
@@ -701,7 +700,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
 	GtkWidget *descriptionTextView = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
 
-	// we save the ticket data in the GObject for later retrieval
 	g_object_set_data(G_OBJECT(editTicketDialog), "ticket-id", GINT_TO_POINTER(id));
 	g_object_set_data_full(G_OBJECT(editTicketDialog), "ticket-creator", g_strdup(currentUser.email), g_free);
 

@@ -13,32 +13,25 @@
 */
 int sendRequest(const int socket, const RequestHeader *req, const void *payload) {
 	size_t toWrite = sizeof(*req);
-	// Converto l'header in un array di bytes
 	const uint8_t *byteBuffer = (const uint8_t *) req;
 	while (toWrite > 0) {
-		// Scrivo finché non esaurisco i byte da scrivere
-		const ssize_t bytesWritten = write(socket, byteBuffer, toWrite); // write ritorna i byte scritti effettivamente
+		const ssize_t bytesWritten = write(socket, byteBuffer, toWrite);
 		if (bytesWritten > 0) {
-			// Ho scritto effettivamente
 			byteBuffer += bytesWritten;
 			toWrite -= bytesWritten;
 		} else if (bytesWritten < 0 && errno == EINTR) {
-			// se non riesce (EINTR quando syscall viene interrotta e non può essere ripresa) ritenta
 			continue;
 		} else {
-			// Altrimenti c'è errore
 			perror("write header");
 			return -1;
 		}
 	}
 
 	if (payload) {
-		// Se c'è un payload allora
 		uint32_t payloadLength = ntohl(req->payloadSize);
-		const uint8_t *payloadByteBuffer = (const uint8_t *) payload; // convertilo in array di byte
+		const uint8_t *payloadByteBuffer = (const uint8_t *) payload;
 		while (payloadLength > 0) {
-			// finché ci sono byte da scrivere
-			ssize_t bytesWritten = write(socket, payloadByteBuffer, payloadLength); // Scrivili e fai gli stessi controlli di prima
+			ssize_t bytesWritten = write(socket, payloadByteBuffer, payloadLength);
 			if (bytesWritten > 0) {
 				payloadByteBuffer += bytesWritten;
 				payloadLength -= bytesWritten;
@@ -76,9 +69,9 @@ int receiveResponse(const int socket, const ResponseHeader *resp, const void *pa
 		}
 	}
 
-	uint32_t payloadLength = ntohl(resp->payloadSize); // se il payload size è impostato ed un buffer (il payload risultante) è stato passato alla funzione
+	uint32_t payloadLength = ntohl(resp->payloadSize);
 	if (payloadLength > 0 && payloadBuffer) {
-		uint8_t *payloadByteBuffer= (uint8_t *) payloadBuffer; // Ancora converti in array di byte, leggi, controlla etc...
+		uint8_t *payloadByteBuffer= (uint8_t *) payloadBuffer;
 		while (payloadLength > 0) {
 			const ssize_t bytesRead = read(socket, payloadByteBuffer, payloadLength);
 			if (bytesRead > 0) {

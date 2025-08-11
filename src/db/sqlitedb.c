@@ -122,9 +122,6 @@ int createTicket(Ticket *ticket) {
  * @returns User struct filled with user data on success, empty User struct otwerwise
  */
 User getUser(const char email[]) {
-	// NOTA: Usare stmt permette un controllo più preciso e si evita di usare il
-	// callback che è una palla per 1 solo
-	//  user.
 	User user = {0};
 	sqlite3_stmt *stmt;
 	const char *sql = "SELECT name, surname, email, password, role FROM User WHERE email = ?;";
@@ -134,14 +131,12 @@ User getUser(const char email[]) {
 		return user;
 	}
 
-	// Metto l'email al prosto di ? nella query
 	if (sqlite3_bind_text(stmt, 1, email, -1, SQLITE_STATIC) != SQLITE_OK) {
 		fprintf(stderr, "Failed to bind email: %s\n", sqlite3_errmsg(db));
 		sqlite3_finalize(stmt);
 		return user;
 	}
 
-	// eseguo la query e copio i risultati (dalle colonne) nella struttura
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		strncpy(user.name, (const char *) sqlite3_column_text(stmt, 0), sizeof(user.name) - 1);
 		strncpy(user.surname, (const char *) sqlite3_column_text(stmt, 1), sizeof(user.surname) - 1);
@@ -161,7 +156,7 @@ User getUser(const char email[]) {
  * @returns Number of users found on success, -1 on error 
  */
 int getUserList(enum Role role, User **outArray) {
-	User *array = calloc(MAX_USER_COUNT, sizeof(User)); // calloc allocates and initializes to 0
+	User *array = calloc(MAX_USER_COUNT, sizeof(User));
 
 	const char *sql = "SELECT * FROM User WHERE role = ?;";
 
