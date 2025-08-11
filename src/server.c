@@ -245,8 +245,8 @@ int main() {
 	addr.sin_port = htons(1420);
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	// Per evitare errore "bind() address already in use" si dice al socket di riutilizzare l'indirizzo e la porta sebbene
-	// non siano ancora stati chiusi
+	// To avoid "bind() address already in use" error, we tell the socket to reuse the address
+	// and port even if they are not yet closed
 	const int yes = 1;
 	if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
 		log_error("setsockopt(SO_REUSEADDR)");
