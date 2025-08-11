@@ -18,6 +18,12 @@
 
 int serverFD;
 
+/**
+ * @brief Log a formatted message with a timestamp and log level to stderr
+ * @param level String indicating the log level (e.g. "INFO", "WARN")
+ * @param fmt Format string containing format specifiers (e.g. "s", "d")
+ * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
+ */
 static void log_message(const char *level, const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
@@ -33,6 +39,11 @@ static void log_message(const char *level, const char *fmt, ...) {
 	fprintf(stderr, "\n");
 }
 
+/**
+ * @brief Log an error message with a timestamp, "ERROR" level tag, and errno details to stderr
+ * @param fmt Format string containing format specifiers (e.g. "s", "d")
+ * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
+ */
 static void log_error(const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
@@ -48,6 +59,22 @@ static void log_error(const char *fmt, ...) {
 	fprintf(stderr, " (errno=%d: %s)\n", errno, strerror(errno));
 }
 
+/**
+ * @brief Handle client request on a connected socket in a loop until disconnection or error
+ * @param socket File descriptor of the connected client socket
+ * 
+ * Command IDs handled:
+ * 
+ * - 1: Login (expects email and password payload)
+ * 
+ * - 2: Create ticket (expects Ticket struct payload)
+ * 
+ * - 3: Get tickets (expects email string payload)
+ * 
+ * - 4: Update ticket (expects Ticket struct payload)
+ * 
+ * - 5: Get users (expects Role enum payload)
+ */
 void handleClient(const int socket) {
 	log_message("INFO", "Client handler started (fd=%d)", socket);
 
@@ -193,6 +220,9 @@ void handleClient(const int socket) {
 	close(socket);
 }
 
+/**
+ * @brief Shut down the server socket, close it and exit the program
+ */
 static void terminateServer() {
 	shutdown(serverFD, SHUT_RDWR);
 	close(serverFD);
