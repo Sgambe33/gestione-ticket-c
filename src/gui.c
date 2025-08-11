@@ -108,7 +108,7 @@ void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel 
  * @param len Number of bytes in @p text (not necessarily characters).
  * @param user_data Pointer containing the character limit, passed as a GPOINTER_TO_INT
  */
-void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
+void onTextBufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
 	const gint limit = GPOINTER_TO_INT(user_data);
 	const gint currentLength = gtk_text_buffer_get_char_count(buffer);
 
@@ -121,13 +121,13 @@ void onTextbufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const 
 		const gint allowed = limit - currentLength;
 
 		// block this handler to prevent multiple assignments
-		g_signal_handlers_block_by_func(buffer, G_CALLBACK(onTextbufferInsertText), user_data);
+		g_signal_handlers_block_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
 
 		// insert only the allowed prefix
 		gtk_text_buffer_insert(buffer, location, text, allowed);
 
 		// re-enable this handler
-		g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(onTextbufferInsertText), user_data);
+		g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
 
 		// prevent the original (oversized) insert
 		g_signal_stop_emission_by_name(buffer, "insert-text");
@@ -305,13 +305,11 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkBuilder *builder = GTK_BUILDER(user_data);
 
-	// Clear text entries
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
 	gtk_entry_set_text(GTK_ENTRY(titleEntry), "");
 	GtkWidget *descriptionEntry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
 	gtk_entry_set_text(GTK_ENTRY(descriptionEntry), "");
 
-	// Reset combo boxes to first item
 	GtkWidget *priorityCombo = GTK_WIDGET(gtk_builder_get_object(builder, "priority_filter_combobox"));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(priorityCombo), 0);
 	GtkWidget *stateCombo = GTK_WIDGET(gtk_builder_get_object(builder, "state_filter_combobox"));
@@ -319,14 +317,12 @@ void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_filter_combobox"));
 	gtk_combo_box_set_active(GTK_COMBO_BOX(agentCombo), 0);
 
-	// Reset calendar to today
 	GtkWidget *calendar = GTK_WIDGET(gtk_builder_get_object(builder, "date_filter_calendar"));
 	GDateTime *now = g_date_time_new_now_local();
 	gtk_calendar_select_month(GTK_CALENDAR(calendar), g_date_time_get_month(now) - 1, g_date_time_get_year(now));
 	gtk_calendar_select_day(GTK_CALENDAR(calendar), g_date_time_get_day_of_month(now));
 	g_date_time_unref(now);
 
-	// Uncheck all filter enable checkboxes
 	GtkWidget *enableTitle = GTK_WIDGET(gtk_builder_get_object(builder, "enable_title_filter"));
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enableTitle), FALSE);
 	GtkWidget *enableDescription = GTK_WIDGET(gtk_builder_get_object(builder, "enable_description_filter"));
@@ -340,7 +336,6 @@ void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *enableDate = GTK_WIDGET(gtk_builder_get_object(builder, "enable_date_filter"));
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enableDate), FALSE);
 
-	// Close the search dialog
 	GtkWidget *searchTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
 	gtk_widget_hide(searchTicketDialog);
 }
@@ -390,7 +385,7 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *discardButton = GTK_WIDGET(gtk_builder_get_object(builder, "discard_ticket_button"));
 	g_signal_handlers_disconnect_by_func(discardButton, G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
 	g_signal_connect(discardButton, "clicked", G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
-	g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "ticket_description_text"))), "insert-text", G_CALLBACK(onTextbufferInsertText), GINT_TO_POINTER(2048));
+	g_signal_connect(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(builder, "ticket_description_text"))), "insert-text", G_CALLBACK(onTextBufferInsertText), GINT_TO_POINTER(2048));
 }
 
 /**
@@ -706,7 +701,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
 	GtkWidget *descriptionTextView = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
 
-	// Salviamo i dati del ticket nell'oggetto GObject per poterli recuperare in seguito
+	// we save the ticket data in the GObject for later retrieval
 	g_object_set_data(G_OBJECT(editTicketDialog), "ticket-id", GINT_TO_POINTER(id));
 	g_object_set_data_full(G_OBJECT(editTicketDialog), "ticket-creator", g_strdup(currentUser.email), g_free);
 
@@ -777,7 +772,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	gtk_widget_show_all(editTicketDialog);
 	gtk_widget_hide(GTK_WIDGET(ticketEditErrorLabel));
 
-	// Connect buttons
 	GtkWidget *saveButton = GTK_WIDGET(gtk_builder_get_object(builder, "save_ticket_button"));
 	g_signal_handlers_disconnect_by_func(saveButton, G_CALLBACK(onSaveEditedTicketButtonClicked), builder);
 	g_signal_connect(saveButton, "clicked", G_CALLBACK(onSaveEditedTicketButtonClicked), builder);
@@ -786,7 +780,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	g_signal_handlers_disconnect_by_func(discardButton, G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
 	g_signal_connect(discardButton, "clicked", G_CALLBACK(onDiscardAddTicketButtonClicked), builder);
 
-	// Clean up
 	g_free(title);
 	g_free(description);
 	g_free(agent);
