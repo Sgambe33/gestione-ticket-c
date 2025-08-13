@@ -166,49 +166,91 @@ gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer us
  * @param user_data Pointer to user data passed during signal connection
  */
 void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
-	GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
-	GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
-	GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
-	gtk_widget_hide(errorLabel);
+    GtkBuilder *builder = GTK_BUILDER(user_data);
+    GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
+    GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
+    GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
+    gtk_widget_hide(errorLabel);
 
-	const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
-	const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
+    const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
+    const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
 
-	if (strlen(email) == 0 || strlen(password) == 0) {
-		gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: email e password non possono essere vuoti");
-		gtk_widget_show(errorLabel);
-		return;
-	}
+    if (strlen(email) == 0 || strlen(password) == 0) {
+        gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: email e password non possono essere vuoti");
+        gtk_widget_show(errorLabel);
+        return;
+    }
 
-	RequestHeader req;
-	req.commandId = htons(1);
-	req.payloadSize = htonl(strlen(email) + strlen(password) + 2);
-	char payload[strlen(email) + strlen(password) + 2];
-	snprintf(payload, sizeof(payload), "%s\n%s", email, password);
+    // Create JSON-RPC request doc
+    yyjson_mut_doc *req = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *root = yyjson_mut_obj(req);
+    yyjson_mut_doc_set_root(req, root);
 
-	if (sendRequest(clientFD, &req, payload) < 0) {
-		showErrorDialog(mainWindow, "Errore di rete durante il login");
-		return;
-	}
+    yyjson_mut_obj_add_str(req, root, "jsonrpc", "2.0");
+    yyjson_mut_obj_add_str(req, root, "method", "login");
 
-	ResponseHeader resp;
-	if (receiveResponse(clientFD, &resp, &currentUser) < 0) {
-		showErrorDialog(mainWindow, "Errore di rete durante il login");
-		return;
-	}
+    // Create params object with email and password
+    yyjson_mut_val *params = yyjson_mut_obj(req);
+    yyjson_mut_obj_add_str(req, params, "email", email);
+    yyjson_mut_obj_add_str(req, params, "password", password);
+    yyjson_mut_obj_add_val(req, root, "params", params);
 
-	if (ntohs(resp.statusCode) != 200) {
-		gtk_label_set_text(GTK_LABEL(errorLabel), resp.message);
-		gtk_widget_show(errorLabel);
-	} else {
-		GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
-		GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+    // Set a request id (can be any int, here 1)
+    yyjson_mut_obj_add_int(req, root, "id", 1);
 
-		gtk_widget_hide(loginWin);
-		gtk_widget_show_all(mainWin);
-	}
+    // Send the JSON-RPC request (you need to implement sendJsonRpcMessage similar to your example)
+    if (sendJsonRpcMessage(clientFD, req) < 0) {
+        yyjson_mut_doc_free(req);
+        showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
+        return;
+    }
+    yyjson_mut_doc_free(req);
+
+    // Receive JSON-RPC response
+    yyjson_doc *resp = NULL;
+    if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
+        showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
+        return;
+    }
+
+    // Parse response
+    yyjson_val *resp_root = yyjson_doc_get_root(resp);
+    yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
+    yyjson_val *result_val = yyjson_obj_get(resp_root, "result");
+
+    if (error_val) {
+        // Extract error message if available
+        yyjson_val *message_val = yyjson_obj_get(error_val, "message");
+        const char *err_msg = message_val ? yyjson_get_str(message_val) : "Errore sconosciuto dal server";
+        gtk_label_set_text(GTK_LABEL(errorLabel), err_msg);
+        gtk_widget_show(errorLabel);
+        yyjson_doc_free(resp);
+        return;
+    }
+
+    if (result_val) {
+        // Assuming the result contains user info or a success flag
+        // For example, a bool "success" or user struct -- adjust accordingly
+
+        // Here, just check if login successful (e.g., result is boolean true)
+        if (yyjson_is_bool(result_val) && yyjson_get_bool(result_val)) {
+            GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
+            GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+            gtk_widget_hide(loginWin);
+            gtk_widget_show_all(mainWin);
+        } else {
+            // Login failed - display error from result or generic message
+            gtk_label_set_text(GTK_LABEL(errorLabel), "Login fallito: credenziali errate");
+            gtk_widget_show(errorLabel);
+        }
+    } else {
+        gtk_label_set_text(GTK_LABEL(errorLabel), "Risposta server non valida");
+        gtk_widget_show(errorLabel);
+    }
+
+    yyjson_doc_free(resp);
 }
+
 
 /**
  * @brief Callaback for the disconnect button click event

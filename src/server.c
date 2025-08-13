@@ -10,8 +10,10 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <errno.h>
+#include "../include/yyjson.h"
 #include "../include/models.h"
 #include "../include/db_utils.h"
+#include "../include/network_utils.h"
 
 #define DEFAULT_PROTOCOL 0
 #define MAX_PENDING_CONNECTIONS 100
@@ -74,148 +76,140 @@ static void log_error(const char *fmt, ...) {
  * - 5: Get users (expects Role enum payload)
  */
 void handleClient(const int socket) {
-	log_message("INFO", "Client handler started (fd=%d)", socket);
+    log_message("INFO", "Client handler started (fd=%d)", socket);
 
-	while (1) {
-		ResponseHeader res;
-		RequestHeader req;
-		const ssize_t bytesRead = read(socket, &req, sizeof(req));
+    while (1) {
+        yyjson_doc *req_doc = NULL;
+        if (receiveJsonRpcMessage(socket, &req_doc) != 0) {
+            log_message("INFO", "Client fd=%d disconnected or read error", socket);
+            break;
+        }
 
-		if (bytesRead == 0) {
-			log_message("INFO", "Client fd=%d disconnected", socket);
-			break;
-		}
+        yyjson_val *root = yyjson_doc_get_root(req_doc);
+        yyjson_val *method_val = yyjson_obj_get(root, "method");
+        yyjson_val *id_val = yyjson_obj_get(root, "id");
+        yyjson_val *params_val = yyjson_obj_get(root, "params");
 
-		if (bytesRead < 0) {
-			log_error("Failed to read header from fd=%d", socket);
-			break;
-		}
+        if (!yyjson_is_str(method_val)) {
+            log_error("Invalid request: missing method");
+            yyjson_doc_free(req_doc);
+            continue;
+        }
 
-		const uint16_t cmd = ntohs(req.commandId);
-		const uint32_t payloadSize = ntohl(req.payloadSize);
-		log_message("INFO", "Received cmd=%u payloadSize=%u on fd=%d", cmd, payloadSize, socket);
+        const char *method = yyjson_get_str(method_val);
+        int request_id = yyjson_is_int(id_val) ? (int)yyjson_get_int(id_val) : 0;
 
-		switch (cmd) {
-			case 1:
-			{
-				if (payloadSize == 0) {
-					log_error("Empty login payload from fd=%d", socket);
-					break;
-				}
-				char *buf = malloc(payloadSize + 1);
-				if (read(socket, buf, payloadSize) != (ssize_t) payloadSize) {
-					log_error("Failed to read login payload from fd=%d", socket);
-					break;
-				}
-				buf[payloadSize] = '\0';
+        log_message("INFO", "Received method=%s id=%d", method, request_id);
 
-				const char *email = strtok(buf, "\n");
-				const char *password = strtok(NULL, "\n");
-				User dbUser = getUser(email);
+        // Prepare a response document
+        yyjson_mut_doc *res_doc = yyjson_mut_doc_new(NULL);
+        yyjson_mut_val *res_root = yyjson_mut_obj(res_doc);
+        yyjson_mut_doc_set_root(res_doc, res_root);
 
-				if (email && password && strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0) {
-					log_message("INFO", "User '%s' authenticated", email);
-					res = (ResponseHeader){htons(200), htonl(sizeof(dbUser)), "Autenticazione avvenuta"};
-					write(socket, &res, sizeof(res));
-					write(socket, &dbUser, sizeof(dbUser));
-				} else {
-					log_message("WARN", "Authentication failed for '%s'", email);
-					res = (ResponseHeader){htons(401), htonl(0), "Autenticazione fallita"};
-					write(socket, &res, sizeof(res));
-				}
-				free(buf);
-				break;
-			}
+        yyjson_mut_obj_add_str(res_doc, res_root, "jsonrpc", "2.0");
+        yyjson_mut_obj_add_int(res_doc, res_root, "id", request_id);
 
-			case 2:
-			{
-				Ticket ticket;
-				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
-					log_error("Failed to read new ticket payload");
-					res = (ResponseHeader){htons(500), htonl(0), "Errore nella creazione del ticket"};
-				} else {
-					const int rc = createTicket(&ticket);
-					if (rc == SQLITE_OK) {
-						log_message("INFO", "User %s created a ticket successfully", ticket.creator);
-						res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
-					} else {
-						log_error("DB error while creating ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(500), htonl(0), "Errore nella creazione del ticket"};
-					}
-				}
-				write(socket, &res, sizeof(res));
-				break;
-			}
+        if (strcmp(method, "login") == 0) {
+            const char *email = yyjson_get_str(yyjson_obj_get(params_val, "email"));
+            const char *password = yyjson_get_str(yyjson_obj_get(params_val, "password"));
+            User dbUser = getUser(email);
 
-			case 3:
-			{
-				char email[64] = {0};
-				if (read(socket, email, sizeof(email)) <= 0) {
-					log_error("Failed to read get-tickets email");
-					res = (ResponseHeader){htons(404), htonl(0), "Errore nel recupero dei ticket"};
-					write(socket, &res, sizeof(res));
-					break;
-				} else {
-					Ticket *tickets = NULL;
-					const int count = getTicketList(email, &tickets);
-					log_message("INFO", "Returning %d tickets for '%s'", count, email);
-					res = (ResponseHeader){htons(200), htonl(count * sizeof(Ticket)), "Lista dei ticket"};
-					write(socket, &res, sizeof(res));
-					if (count > 0) {
-						write(socket, tickets, count * sizeof(Ticket));
-					}
-					free(tickets);
-				}
-				break;
-			}
-			case 4:
-			{
-				Ticket ticket;
-				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
-					log_error("Failed to read update-ticket payload");
-					res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
-				} else {
-					const int rc = updateTicket(&ticket);
-					if (rc == SQLITE_OK) {
-						log_message("INFO", "Updated ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(200), htonl(0), "Ticket aggiornato con successo"};
-					} else {
-						log_error("DB error updating ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
-					}
-				}
-				write(socket, &res, sizeof(res));
-				break;
-			}
+            if (email && password &&
+                strcmp(email, dbUser.email) == 0 &&
+                strcmp(password, dbUser.password) == 0) {
 
-			case 5:
-			{
-				enum Role role;
-				if (read(socket, &role, sizeof(role)) != (ssize_t) sizeof(role)) {
-					log_error("Failed to read get-users role");
-					res = (ResponseHeader){htons(404), htonl(0), "Errore nel recupero degli utenti"};
-				} else {
-					User *users = NULL;
-					const int count = getUserList(role, &users);
-					log_message("INFO", "Returning %d users for role=%d", count, role);
-					res = (ResponseHeader){htons(200), htonl(count * sizeof(User)), "Lista degli utenti"};
-					write(socket, &res, sizeof(res));
-					if (count > 0) {
-						write(socket, users, count * sizeof(User));
-					}
-					free(users);
-				}
-				break;
-			}
+                log_message("INFO", "User '%s' authenticated", email);
+                yyjson_mut_val *result = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_str(res_doc, result, "email", dbUser.email);
+                yyjson_mut_obj_add_str(res_doc, result, "name", dbUser.name);
+                yyjson_mut_obj_add_int(res_doc, result, "role", dbUser.role);
+                yyjson_mut_obj_add_val(res_doc, res_root, "result", result);
+            } else {
+                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_int(res_doc, err, "code", 401);
+                yyjson_mut_obj_add_str(res_doc, err, "message", "Authentication failed");
+                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
+            }
+        }
+        else if (strcmp(method, "createTicket") == 0) {
+            Ticket ticket;
+            ticket.id = (int)yyjson_get_int(yyjson_obj_get(params_val, "id"));
+            strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(params_val, "creator")), sizeof(ticket.creator)-1);
+            strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(params_val, "description")), sizeof(ticket.description)-1);
 
-			default:
-				log_message("WARN", "Unknown command ID %u", cmd);
-				break;
-		}
-	}
+            int rc = createTicket(&ticket);
+            if (rc == SQLITE_OK) {
+                yyjson_mut_obj_add_str(res_doc, res_root, "result", "Ticket created successfully");
+            } else {
+                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_int(res_doc, err, "code", 500);
+                yyjson_mut_obj_add_str(res_doc, err, "message", "Error creating ticket");
+                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
+            }
+        }
+        else if (strcmp(method, "getTickets") == 0) {
+            const char *email = yyjson_get_str(yyjson_obj_get(params_val, "email"));
+            Ticket *tickets = NULL;
+            int count = getTicketList(email, &tickets);
 
-	log_message("INFO", "Closing client socket fd=%d", socket);
-	close(socket);
+            yyjson_mut_val *arr = yyjson_mut_arr(res_doc);
+            for (int i = 0; i < count; i++) {
+                yyjson_mut_val *t = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_int(res_doc, t, "id", tickets[i].id);
+                yyjson_mut_obj_add_str(res_doc, t, "creator", tickets[i].creator);
+                yyjson_mut_obj_add_str(res_doc, t, "description", tickets[i].description);
+                yyjson_mut_arr_add_val(arr, t);
+            }
+            yyjson_mut_obj_add_val(res_doc, res_root, "result", arr);
+            free(tickets);
+        }
+        else if (strcmp(method, "updateTicket") == 0) {
+            Ticket ticket;
+            ticket.id = (int)yyjson_get_int(yyjson_obj_get(params_val, "id"));
+            strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(params_val, "creator")), sizeof(ticket.creator)-1);
+            strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(params_val, "description")), sizeof(ticket.description)-1);
+
+            int rc = updateTicket(&ticket);
+            if (rc == SQLITE_OK) {
+                yyjson_mut_obj_add_str(res_doc, res_root, "result", "Ticket updated successfully");
+            } else {
+                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_int(res_doc, err, "code", 500);
+                yyjson_mut_obj_add_str(res_doc, err, "message", "Error updating ticket");
+                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
+            }
+        }
+        else if (strcmp(method, "getUsers") == 0) {
+            enum Role role = (enum Role)yyjson_get_int(yyjson_obj_get(params_val, "role"));
+            User *users = NULL;
+            int count = getUserList(role, &users);
+
+            yyjson_mut_val *arr = yyjson_mut_arr(res_doc);
+            for (int i = 0; i < count; i++) {
+                yyjson_mut_val *u = yyjson_mut_obj(res_doc);
+                yyjson_mut_obj_add_str(res_doc, u, "email", users[i].email);
+                yyjson_mut_obj_add_str(res_doc, u, "name", users[i].name);
+                yyjson_mut_obj_add_int(res_doc, u, "role", users[i].role);
+                yyjson_mut_arr_add_val(arr, u);
+            }
+            yyjson_mut_obj_add_val(res_doc, res_root, "result", arr);
+            free(users);
+        }
+        else {
+            yyjson_mut_val *err = yyjson_mut_obj(res_doc);
+            yyjson_mut_obj_add_int(res_doc, err, "code", -32601);
+            yyjson_mut_obj_add_str(res_doc, err, "message", "Method not found");
+            yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
+        }
+
+        sendJsonRpcMessage(socket, res_doc);
+
+        yyjson_mut_doc_free(res_doc);
+        yyjson_doc_free(req_doc);
+    }
+
+    log_message("INFO", "Closing client socket fd=%d", socket);
+    close(socket);
 }
 
 /**
