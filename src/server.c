@@ -1,19 +1,19 @@
-#include <stdio.h>
-#include <stdarg.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 #include <time.h>
-#include <errno.h>
-#include "../include/yyjson.h"
-#include "../include/models.h"
+#include <unistd.h>
 #include "../include/db_utils.h"
+#include "../include/models.h"
 #include "../include/network_utils.h"
+#include "../include/yyjson.h"
 
 #define DEFAULT_PROTOCOL 0
 #define MAX_PENDING_CONNECTIONS 100
@@ -62,154 +62,158 @@ static void log_error(const char *fmt, ...) {
 /**
  * @brief Handle client request on a connected socket in a loop until disconnection or error
  * @param socket File descriptor of the connected client socket
- * 
- * Command IDs handled:
- * 
- * - 1: Login (expects email and password payload)
- * 
- * - 2: Create ticket (expects Ticket struct payload)
- * 
- * - 3: Get tickets (expects email string payload)
- * 
- * - 4: Update ticket (expects Ticket struct payload)
- * 
- * - 5: Get users (expects Role enum payload)
  */
 void handleClient(const int socket) {
-    log_message("INFO", "Client handler started (fd=%d)", socket);
+	log_message("INFO", "Client handler started (fd=%d)", socket);
 
-    while (1) {
-        yyjson_doc *req_doc = NULL;
-        if (receiveJsonRpcMessage(socket, &req_doc) != 0) {
-            log_message("INFO", "Client fd=%d disconnected or read error", socket);
-            break;
-        }
+	while (1) {
+		yyjson_doc *reqDoc = NULL;
+		if (receiveJsonRpcMessage(socket, &reqDoc) != 0) {
+			log_message("INFO", "Client fd=%d disconnected or read error", socket);
+			break;
+		}
 
-        yyjson_val *root = yyjson_doc_get_root(req_doc);
-        yyjson_val *method_val = yyjson_obj_get(root, "method");
-        yyjson_val *id_val = yyjson_obj_get(root, "id");
-        yyjson_val *params_val = yyjson_obj_get(root, "params");
+		yyjson_val *root = yyjson_doc_get_root(reqDoc);
+		yyjson_val *methodVal = yyjson_obj_get(root, "method");
+		yyjson_val *idVal = yyjson_obj_get(root, "id");
+		yyjson_val *paramsVal = yyjson_obj_get(root, "params");
 
-        if (!yyjson_is_str(method_val)) {
-            log_error("Invalid request: missing method");
-            yyjson_doc_free(req_doc);
-            continue;
-        }
+		if (!yyjson_is_str(methodVal)) {
+			log_error("Invalid request: missing method");
+			yyjson_doc_free(reqDoc);
+			continue;
+		}
 
-        const char *method = yyjson_get_str(method_val);
-        int request_id = yyjson_is_int(id_val) ? (int)yyjson_get_int(id_val) : 0;
+		const char *method = yyjson_get_str(methodVal);
+		int requestId = yyjson_is_int(idVal) ? (int) yyjson_get_int(idVal) : 0;
 
-        log_message("INFO", "Received method=%s id=%d", method, request_id);
+		log_message("INFO", "Received method=%s id=%d", method, requestId);
 
-        // Prepare a response document
-        yyjson_mut_doc *res_doc = yyjson_mut_doc_new(NULL);
-        yyjson_mut_val *res_root = yyjson_mut_obj(res_doc);
-        yyjson_mut_doc_set_root(res_doc, res_root);
+		// Prepare a response document
+		yyjson_mut_doc *resDoc = yyjson_mut_doc_new(NULL);
+		yyjson_mut_val *resRoot = yyjson_mut_obj(resDoc);
+		yyjson_mut_doc_set_root(resDoc, resRoot);
 
-        yyjson_mut_obj_add_str(res_doc, res_root, "jsonrpc", "2.0");
-        yyjson_mut_obj_add_int(res_doc, res_root, "id", request_id);
+		yyjson_mut_obj_add_str(resDoc, resRoot, "jsonrpc", "2.0");
+		yyjson_mut_obj_add_int(resDoc, resRoot, "id", requestId);
 
-        if (strcmp(method, "login") == 0) {
-            const char *email = yyjson_get_str(yyjson_obj_get(params_val, "email"));
-            const char *password = yyjson_get_str(yyjson_obj_get(params_val, "password"));
-            User dbUser = getUser(email);
+		// LOGIN OK
+		if (strcmp(method, "login") == 0) {
+			const char *email = yyjson_get_str(yyjson_obj_get(paramsVal, "email"));
+			const char *password = yyjson_get_str(yyjson_obj_get(paramsVal, "password"));
+			User dbUser = getUser(email);
 
-            if (email && password &&
-                strcmp(email, dbUser.email) == 0 &&
-                strcmp(password, dbUser.password) == 0) {
+			if (email && password && strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0) {
+				log_message("INFO", "User '%s' authenticated", email);
+				yyjson_mut_val *result = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_str(resDoc, result, "name", dbUser.name);
+				yyjson_mut_obj_add_str(resDoc, result, "surname", dbUser.surname);
+				yyjson_mut_obj_add_str(resDoc, result, "email", dbUser.email);
+				yyjson_mut_obj_add_int(resDoc, result, "role", dbUser.role);
+				yyjson_mut_obj_add_val(resDoc, resRoot, "result", result);
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32401);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Autenticazione fallita");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+			}
 
-                log_message("INFO", "User '%s' authenticated", email);
-                yyjson_mut_val *result = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_str(res_doc, result, "email", dbUser.email);
-                yyjson_mut_obj_add_str(res_doc, result, "name", dbUser.name);
-                yyjson_mut_obj_add_int(res_doc, result, "role", dbUser.role);
-                yyjson_mut_obj_add_val(res_doc, res_root, "result", result);
-            } else {
-                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_int(res_doc, err, "code", 401);
-                yyjson_mut_obj_add_str(res_doc, err, "message", "Authentication failed");
-                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
-            }
-        }
-        else if (strcmp(method, "createTicket") == 0) {
-            Ticket ticket;
-            ticket.id = (int)yyjson_get_int(yyjson_obj_get(params_val, "id"));
-            strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(params_val, "creator")), sizeof(ticket.creator)-1);
-            strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(params_val, "description")), sizeof(ticket.description)-1);
+		} else if (strcmp(method, "createTicket") == 0) { // TODO: CHECK IF CREATION DATE IS PARSED OK
+			Ticket ticket = {0};
 
-            int rc = createTicket(&ticket);
-            if (rc == SQLITE_OK) {
-                yyjson_mut_obj_add_str(res_doc, res_root, "result", "Ticket created successfully");
-            } else {
-                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_int(res_doc, err, "code", 500);
-                yyjson_mut_obj_add_str(res_doc, err, "message", "Error creating ticket");
-                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
-            }
-        }
-        else if (strcmp(method, "getTickets") == 0) {
-            const char *email = yyjson_get_str(yyjson_obj_get(params_val, "email"));
-            Ticket *tickets = NULL;
-            int count = getTicketList(email, &tickets);
+			strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(paramsVal, "creator")), sizeof(ticket.creator) - 1);
+			strncpy(ticket.title, yyjson_get_str(yyjson_obj_get(paramsVal, "title")), sizeof(ticket.title) - 1);
+			strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(paramsVal, "description")), sizeof(ticket.description) - 1);
+			ticket.creationDate = yyjson_get_uint(yyjson_obj_get(paramsVal, "creationDate"));
 
-            yyjson_mut_val *arr = yyjson_mut_arr(res_doc);
-            for (int i = 0; i < count; i++) {
-                yyjson_mut_val *t = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_int(res_doc, t, "id", tickets[i].id);
-                yyjson_mut_obj_add_str(res_doc, t, "creator", tickets[i].creator);
-                yyjson_mut_obj_add_str(res_doc, t, "description", tickets[i].description);
-                yyjson_mut_arr_add_val(arr, t);
-            }
-            yyjson_mut_obj_add_val(res_doc, res_root, "result", arr);
-            free(tickets);
-        }
-        else if (strcmp(method, "updateTicket") == 0) {
-            Ticket ticket;
-            ticket.id = (int)yyjson_get_int(yyjson_obj_get(params_val, "id"));
-            strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(params_val, "creator")), sizeof(ticket.creator)-1);
-            strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(params_val, "description")), sizeof(ticket.description)-1);
+			int rc = createTicket(&ticket);
+			if (rc == SQLITE_OK) {
+				yyjson_mut_obj_add_str(resDoc, resRoot, "result", "Ticket creato con successo");
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32500);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nella creazione del ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+			}
+		} else if (strcmp(method, "getTickets") == 0) {
+			const char *email = yyjson_get_str(yyjson_obj_get(paramsVal, "email"));
+			Ticket *tickets = NULL;
+			int count = getTicketList(email, &tickets);
+			if (count > 0) {
+				log_message("INFO", "Adding %d tickets to array!", count);
+				yyjson_mut_val *arr = yyjson_mut_arr(resDoc);
+				for (int i = 0; i < count; i++) {
+					yyjson_mut_val *jsonTicket = yyjson_mut_obj(resDoc);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "id", tickets[i].id);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "creator", tickets[i].creator);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "title", tickets[i].title);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "description", tickets[i].description);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "state", tickets[i].state);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "priority", tickets[i].priority);
+					yyjson_mut_obj_add_uint(resDoc, jsonTicket, "creationDate", (uint64_t) tickets[i].creationDate);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "assignedAgent", tickets[i].assignedAgent);
+					yyjson_mut_arr_add_val(arr, jsonTicket);
+				}
+				yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
+				free(tickets);
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32404);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nel recupero dei ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+			}
 
-            int rc = updateTicket(&ticket);
-            if (rc == SQLITE_OK) {
-                yyjson_mut_obj_add_str(res_doc, res_root, "result", "Ticket updated successfully");
-            } else {
-                yyjson_mut_val *err = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_int(res_doc, err, "code", 500);
-                yyjson_mut_obj_add_str(res_doc, err, "message", "Error updating ticket");
-                yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
-            }
-        }
-        else if (strcmp(method, "getUsers") == 0) {
-            enum Role role = (enum Role)yyjson_get_int(yyjson_obj_get(params_val, "role"));
-            User *users = NULL;
-            int count = getUserList(role, &users);
+		} else if (strcmp(method, "updateTicket") == 0) {
+			Ticket ticket;
+			ticket.id = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "id"));
+			ticket.priority = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "priority"));
+			ticket.state = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "state"));
+			strncpy(ticket.assignedAgent, yyjson_get_str(yyjson_obj_get(paramsVal, "assignedAgent")), sizeof(ticket.assignedAgent) - 1);
 
-            yyjson_mut_val *arr = yyjson_mut_arr(res_doc);
-            for (int i = 0; i < count; i++) {
-                yyjson_mut_val *u = yyjson_mut_obj(res_doc);
-                yyjson_mut_obj_add_str(res_doc, u, "email", users[i].email);
-                yyjson_mut_obj_add_str(res_doc, u, "name", users[i].name);
-                yyjson_mut_obj_add_int(res_doc, u, "role", users[i].role);
-                yyjson_mut_arr_add_val(arr, u);
-            }
-            yyjson_mut_obj_add_val(res_doc, res_root, "result", arr);
-            free(users);
-        }
-        else {
-            yyjson_mut_val *err = yyjson_mut_obj(res_doc);
-            yyjson_mut_obj_add_int(res_doc, err, "code", -32601);
-            yyjson_mut_obj_add_str(res_doc, err, "message", "Method not found");
-            yyjson_mut_obj_add_val(res_doc, res_root, "error", err);
-        }
+			int rc = updateTicket(&ticket);
+			if (rc == SQLITE_OK) {
+				yyjson_mut_obj_add_str(resDoc, resRoot, "result", "Ticket aggiornato con successo");
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32500);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nell'aggiornamento del ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+			}
+		} else if (strcmp(method, "getUsers") == 0) {
+			enum Role role = (enum Role) yyjson_get_int(yyjson_obj_get(paramsVal, "role"));
+			User *users = NULL;
+			int count = getUserList(role, &users);
 
-        sendJsonRpcMessage(socket, res_doc);
+			yyjson_mut_val *arr = yyjson_mut_arr(resDoc);
+			for (int i = 0; i < count; i++) {
+				yyjson_mut_val *u = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_str(resDoc, u, "email", users[i].email);
+				yyjson_mut_obj_add_str(resDoc, u, "name", users[i].name);
+				yyjson_mut_obj_add_int(resDoc, u, "role", users[i].role);
+				yyjson_mut_arr_add_val(arr, u);
+			}
+			yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
+			free(users);
+		} else {
+			yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+			yyjson_mut_obj_add_int(resDoc, err, "code", -32601);
+			yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nel recupero degli utenti");
+			yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+		}
 
-        yyjson_mut_doc_free(res_doc);
-        yyjson_doc_free(req_doc);
-    }
+		char *resJson = yyjson_mut_write(resDoc, 0, NULL);
+		log_message("INFO", "Response: %s", resJson);
 
-    log_message("INFO", "Closing client socket fd=%d", socket);
-    close(socket);
+		if(sendJsonRpcMessage(socket, resDoc) < 0){
+			log_error("ERRORE NELL'INVIO DEL JSON");
+		}
+
+		yyjson_mut_doc_free(resDoc);
+		yyjson_doc_free(reqDoc);
+	}
+
+	log_message("INFO", "Closing client socket fd=%d", socket);
+	close(socket);
 }
 
 /**

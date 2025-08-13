@@ -1,5 +1,5 @@
-#include <netinet/in.h>
 #include "../include/gui.h"
+#include <netinet/in.h>
 #include "../include/network_utils.h"
 
 User currentUser;
@@ -11,16 +11,7 @@ static GtkTreeModelFilter *filterModel;
 static GtkTreeView *ticketTreeView;
 static GtkWindow *mainWindow = NULL;
 
-enum Columns {
-	COL_ID,
-	COL_TITLE,
-	COL_DESCRIPTION,
-	COL_CREATIONDATE,
-	COL_PRIORITY,
-	COL_STATE,
-	COL_CREATOR,
-	COL_ASSIGNEDAGENT
-};
+enum Columns { COL_ID, COL_TITLE, COL_DESCRIPTION, COL_CREATIONDATE, COL_PRIORITY, COL_STATE, COL_CREATOR, COL_ASSIGNEDAGENT };
 
 char *stateToString(const enum State state) {
 	switch (state) {
@@ -166,89 +157,84 @@ gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer us
  * @param user_data Pointer to user data passed during signal connection
  */
 void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
-    GtkBuilder *builder = GTK_BUILDER(user_data);
-    GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
-    GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
-    GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
-    gtk_widget_hide(errorLabel);
+	GtkBuilder *builder = GTK_BUILDER(user_data);
+	GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
+	GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
+	GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
+	gtk_widget_hide(errorLabel);
 
-    const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
-    const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
+	const char *email = gtk_entry_get_text(GTK_ENTRY(emailEntry));
+	const char *password = gtk_entry_get_text(GTK_ENTRY(passwordEntry));
 
-    if (strlen(email) == 0 || strlen(password) == 0) {
-        gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: email e password non possono essere vuoti");
-        gtk_widget_show(errorLabel);
-        return;
-    }
+	if (strlen(email) == 0 || strlen(password) == 0) {
+		gtk_label_set_text(GTK_LABEL(errorLabel), "Errore: email e password non possono essere vuoti");
+		gtk_widget_show(errorLabel);
+		return;
+	}
 
-    // Create JSON-RPC request doc
-    yyjson_mut_doc *req = yyjson_mut_doc_new(NULL);
-    yyjson_mut_val *root = yyjson_mut_obj(req);
-    yyjson_mut_doc_set_root(req, root);
+	// Create JSON-RPC request doc
+	yyjson_mut_doc *req = yyjson_mut_doc_new(NULL);
+	yyjson_mut_val *root = yyjson_mut_obj(req);
+	yyjson_mut_doc_set_root(req, root);
 
-    yyjson_mut_obj_add_str(req, root, "jsonrpc", "2.0");
-    yyjson_mut_obj_add_str(req, root, "method", "login");
+	yyjson_mut_obj_add_str(req, root, "jsonrpc", "2.0");
+	yyjson_mut_obj_add_str(req, root, "method", "login");
 
-    // Create params object with email and password
-    yyjson_mut_val *params = yyjson_mut_obj(req);
-    yyjson_mut_obj_add_str(req, params, "email", email);
-    yyjson_mut_obj_add_str(req, params, "password", password);
-    yyjson_mut_obj_add_val(req, root, "params", params);
+	// Create params object with email and password
+	yyjson_mut_val *params = yyjson_mut_obj(req);
+	yyjson_mut_obj_add_str(req, params, "email", email);
+	yyjson_mut_obj_add_str(req, params, "password", password);
+	yyjson_mut_obj_add_val(req, root, "params", params);
 
-    // Set a request id (can be any int, here 1)
-    yyjson_mut_obj_add_int(req, root, "id", 1);
+	// Set a request id (can be any int, here 1)
+	yyjson_mut_obj_add_int(req, root, "id", 1);
 
-    // Send the JSON-RPC request (you need to implement sendJsonRpcMessage similar to your example)
-    if (sendJsonRpcMessage(clientFD, req) < 0) {
-        yyjson_mut_doc_free(req);
-        showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
-        return;
-    }
-    yyjson_mut_doc_free(req);
+	// Send the JSON-RPC request (you need to implement sendJsonRpcMessage similar to your example)
+	if (sendJsonRpcMessage(clientFD, req) < 0) {
+		yyjson_mut_doc_free(req);
+		showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
+		return;
+	}
+	yyjson_mut_doc_free(req);
 
-    // Receive JSON-RPC response
-    yyjson_doc *resp = NULL;
-    if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
-        showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
-        return;
-    }
+	// Receive JSON-RPC response
+	yyjson_doc *resp = NULL;
+	if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
+		showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
+		return;
+	}
 
-    // Parse response
-    yyjson_val *resp_root = yyjson_doc_get_root(resp);
-    yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
-    yyjson_val *result_val = yyjson_obj_get(resp_root, "result");
+	// Parse response
+	yyjson_val *resp_root = yyjson_doc_get_root(resp);
+	yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
+	yyjson_val *result_val = yyjson_obj_get(resp_root, "result");
 
-    if (error_val) {
-        // Extract error message if available
-        yyjson_val *message_val = yyjson_obj_get(error_val, "message");
-        const char *err_msg = message_val ? yyjson_get_str(message_val) : "Errore sconosciuto dal server";
-        gtk_label_set_text(GTK_LABEL(errorLabel), err_msg);
-        gtk_widget_show(errorLabel);
-        yyjson_doc_free(resp);
-        return;
-    }
+	if (error_val) {
+		// Extract error message if available
+		yyjson_val *message_val = yyjson_obj_get(error_val, "message");
+		const char *err_msg = message_val ? yyjson_get_str(message_val) : "Errore sconosciuto dal server";
+		gtk_label_set_text(GTK_LABEL(errorLabel), err_msg);
+		gtk_widget_show(errorLabel);
+		yyjson_doc_free(resp);
+		return;
+	}
 
-    if (result_val) {
-        // Assuming the result contains user info or a success flag
-        // For example, a bool "success" or user struct -- adjust accordingly
+	if (result_val) {
+		const char *email_str = yyjson_get_str(yyjson_obj_get(result_val, "email"));
+		strncpy(currentUser.name, email_str, sizeof(currentUser.name) - 1);
+		strncpy(currentUser.surname, email_str, sizeof(currentUser.surname) - 1);
+		strncpy(currentUser.email, email_str, sizeof(currentUser.email) - 1);
+		currentUser.role = yyjson_get_int(yyjson_obj_get(result_val, "role"));
+		GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
+		GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+		gtk_widget_hide(loginWin);
+		gtk_widget_show_all(mainWin);
+	} else {
+		gtk_label_set_text(GTK_LABEL(errorLabel), "Risposta server non valida");
+		gtk_widget_show(errorLabel);
+	}
 
-        // Here, just check if login successful (e.g., result is boolean true)
-        if (yyjson_is_bool(result_val) && yyjson_get_bool(result_val)) {
-            GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
-            GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
-            gtk_widget_hide(loginWin);
-            gtk_widget_show_all(mainWin);
-        } else {
-            // Login failed - display error from result or generic message
-            gtk_label_set_text(GTK_LABEL(errorLabel), "Login fallito: credenziali errate");
-            gtk_widget_show(errorLabel);
-        }
-    } else {
-        gtk_label_set_text(GTK_LABEL(errorLabel), "Risposta server non valida");
-        gtk_widget_show(errorLabel);
-    }
-
-    yyjson_doc_free(resp);
+	yyjson_doc_free(resp);
 }
 
 
@@ -290,33 +276,43 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 		return;
 	}
 
-	Ticket newTicket = {0};
+	// TODO: Declare request format as global variable to reuse it?
 
-	strncpy(newTicket.title, title, sizeof(newTicket.title) - 1);
-	strncpy(newTicket.description, description, sizeof(newTicket.description) - 1);
-	newTicket.priority = LOW;
-	newTicket.state = OPEN;
-	newTicket.creationDate = time(NULL);
-	strncpy(newTicket.creator, currentUser.email, sizeof(newTicket.creator) - 1);
-	strncpy(newTicket.assignedAgent, "", sizeof(newTicket.assignedAgent) - 1);
+	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+	yyjson_mut_val *root = yyjson_mut_obj(doc);
+
+	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
+	yyjson_mut_obj_add_str(doc, root, "method", "createTicket");
+	yyjson_mut_obj_add_int(doc, root, "id", 2);
+
+	yyjson_mut_val *params = yyjson_mut_obj(doc);
+	yyjson_mut_obj_add_str(doc, params, "title", title);
+	yyjson_mut_obj_add_str(doc, params, "description", description);
+	yyjson_mut_obj_add_int(doc, params, "priority", LOW);
+	yyjson_mut_obj_add_str(doc, params, "state", OPEN);
+	yyjson_mut_obj_add_uint(doc, params, "creationDate", (long) time(NULL));
+	yyjson_mut_obj_add_str(doc, params, "creator", currentUser.email);
+	yyjson_mut_obj_add_str(doc, params, "assignedAgent", "");
+	yyjson_mut_obj_add_val(doc, root, "params", params);
 
 	g_free(description);
 
-	RequestHeader req = {htons(2), htonl(sizeof(newTicket))};
-
-	if (sendRequest(clientFD, &req, &newTicket) < 0) {
+	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
 		return;
 	}
 
-	ResponseHeader resp;
-	if (receiveResponse(clientFD, &resp, NULL) < 0) {
+	yyjson_doc *resp = NULL;
+	if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
 		return;
 	}
 
-	if (ntohs(resp.statusCode) != 201) {
-		gtk_label_set_text(GTK_LABEL(errorLabel), resp.message);
+	yyjson_val *resp_root = yyjson_doc_get_root(resp);
+	yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
+
+	if (error_val) {
+		gtk_label_set_text(GTK_LABEL(errorLabel), yyjson_get_str(yyjson_obj_get(error_val, "message")));
 		gtk_widget_show(errorLabel);
 		return;
 	}
@@ -468,17 +464,11 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	gtk_tree_view_set_model(ticketTreeView, GTK_TREE_MODEL(filterModel));
 
 	// Setup custom cell renderers
-	gtk_tree_view_column_set_cell_data_func(
-			GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")),
-			GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
-	gtk_tree_view_column_set_cell_data_func(
-			GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status")),
-			GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status")), renderState, NULL, NULL);
-	gtk_tree_view_column_set_cell_data_func(
-			GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_date")),
-			GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")), renderDate, NULL, NULL);
+	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
+	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status")), renderState, NULL, NULL);
+	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_date")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")), renderDate, NULL, NULL);
 	GtkCellRenderer *renderer_desc = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_desc"));
-	g_object_set(renderer_desc, "wrap-mode", PANGO_WRAP_WORD_CHAR, "wrap-width", 300, "ellipsize", PANGO_ELLIPSIZE_END,NULL);
+	g_object_set(renderer_desc, "wrap-mode", PANGO_WRAP_WORD_CHAR, "wrap-width", 300, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
 
 	refreshTicketList();
 
@@ -492,39 +482,74 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
  *          the extra tickets will not be retrieved.
  */
 void refreshTicketList() {
-	RequestHeader req = {htons(3), htonl(strlen(currentUser.email) + 1)};
-	if (sendRequest(clientFD, &req, currentUser.email) < 0) {
-		showErrorDialog(mainWindow, "Errore di rete durante il recupero dei ticket");
+	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+	yyjson_mut_val *root = yyjson_mut_obj(doc);
+	yyjson_mut_doc_set_root(doc, root);
+
+	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
+	yyjson_mut_obj_add_str(doc, root, "method", "getTickets");
+	yyjson_mut_obj_add_int(doc, root, "id", 2);
+
+	yyjson_mut_val *params = yyjson_mut_obj(doc);
+	yyjson_mut_obj_add_str(doc, params, "email", currentUser.email);
+	yyjson_mut_obj_add_val(doc, root, "params", params);
+
+
+	if (sendJsonRpcMessage(clientFD, doc) < 0) {
+		showErrorDialog(mainWindow, "Errore di rete durante la richiesta dei ticket");
 		return;
 	}
 
-	ResponseHeader resp;
-	Ticket *tickets = malloc(100 * sizeof(Ticket));
-	if (receiveResponse(clientFD, &resp, tickets) < 0) {
+	yyjson_doc *resp_doc;
+
+	if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante il recupero dei ticket");
 		return;
 	}
 
 	gtk_list_store_clear(store);
 
-	const uint32_t payloadBytes = ntohl(resp.payloadSize);
-	const uint32_t nTickets = payloadBytes / sizeof(Ticket);
+	yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
+	yyjson_val *result = yyjson_obj_get(resp_root, "result");
 
-	GtkTreeIter iter;
-	for (int i = 0; i < nTickets; i++) {
+	const uint32_t nTickets = yyjson_arr_size(result);
+
+	for (size_t i = 0; i < nTickets; ++i) {
+		yyjson_val *jticket = yyjson_arr_get(result, i);
+		if (!jticket || !yyjson_is_obj(jticket)) continue;
+
+		yyjson_val *v;
+
+		v = yyjson_obj_get(jticket, "id");
+		gint id = v ? (gint) yyjson_get_int(v) : 0;
+
+		v = yyjson_obj_get(jticket, "title");
+		const char *title = v ? yyjson_get_str(v) : "";
+
+		v = yyjson_obj_get(jticket, "description");
+		const char *description = v ? yyjson_get_str(v) : "";
+
+		v = yyjson_obj_get(jticket, "creationDate");
+		guint64 creationDate = v ? yyjson_get_uint(v) : 0;
+
+		v = yyjson_obj_get(jticket, "priority");
+		int priority = v ? (int) yyjson_get_int(v) : 0;
+
+		v = yyjson_obj_get(jticket, "state");
+		int state = v ? (int) yyjson_get_int(v) : 0;
+
+		v = yyjson_obj_get(jticket, "creator");
+		const char *creator = v ? yyjson_get_str(v) : "";
+
+		v = yyjson_obj_get(jticket, "assignedAgent");
+		const char *assignedAgent = v ? yyjson_get_str(v) : "";
+
+		GtkTreeIter iter; // Forse va fuori dal for?
 		gtk_list_store_append(store, &iter);
-		gtk_list_store_set(store, &iter,
-		                   COL_ID, tickets[i].id,
-		                   COL_TITLE, tickets[i].title,
-		                   COL_DESCRIPTION, tickets[i].description,
-		                   COL_CREATIONDATE, tickets[i].creationDate,
-		                   COL_PRIORITY, tickets[i].priority,
-		                   COL_STATE, tickets[i].state,
-		                   COL_CREATOR, tickets[i].creator,
-		                   COL_ASSIGNEDAGENT, tickets[i].assignedAgent,
-		                   -1);
+		gtk_list_store_set(store, &iter, COL_ID, id, COL_TITLE, title, COL_DESCRIPTION, description, COL_CREATIONDATE, (gint) creationDate, COL_PRIORITY, priority, COL_STATE, state, COL_CREATOR, creator, COL_ASSIGNEDAGENT, assignedAgent, -1);
 	}
-	free(tickets);
+
+	yyjson_doc_free(resp_doc);
 }
 
 /**
@@ -634,14 +659,7 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 	int priority, state;
 	time_t creation_date;
 
-	gtk_tree_model_get(model, iter,
-	                   COL_TITLE, &title,
-	                   COL_DESCRIPTION, &desc,
-	                   COL_PRIORITY, &priority,
-	                   COL_STATE, &state,
-	                   COL_ASSIGNEDAGENT, &agent,
-	                   COL_CREATIONDATE, &creation_date,
-	                   -1);
+	gtk_tree_model_get(model, iter, COL_TITLE, &title, COL_DESCRIPTION, &desc, COL_PRIORITY, &priority, COL_STATE, &state, COL_ASSIGNEDAGENT, &agent, COL_CREATIONDATE, &creation_date, -1);
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_title)) && title_filter[0]) {
 		char *title_lower = g_utf8_strdown(title, -1);
@@ -652,7 +670,7 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 		free(title_lower);
 		free(filter_lower);
 
-		if (!match){
+		if (!match) {
 			return 0;
 		}
 	}
@@ -666,19 +684,19 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 		free(desc_lower);
 		free(filter_lower);
 
-		if (!match){
+		if (!match) {
 			return 0;
 		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority))) {
-		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0'){
+		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0') {
 			return 0;
 		}
 	}
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state))) {
-		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0'){
+		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0') {
 			return 0;
 		}
 	}
@@ -693,7 +711,7 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 
 	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date))) {
 		struct tm *ticket_date = localtime(&creation_date);
-		if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday){
+		if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday) {
 			return 0;
 		}
 	}
@@ -713,7 +731,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	GtkTreeIter iter;
 
-	if (!gtk_tree_model_get_iter(model, &iter, path)){
+	if (!gtk_tree_model_get_iter(model, &iter, path)) {
 		return;
 	}
 
@@ -721,16 +739,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	gchar *title = NULL, *description = NULL, *agent = NULL, *creator = NULL;
 	time_t creationDate;
 
-	gtk_tree_model_get(model, &iter,
-	                   COL_ID, &id,
-	                   COL_TITLE, &title,
-	                   COL_DESCRIPTION, &description,
-	                   COL_PRIORITY, &priority,
-	                   COL_STATE, &state,
-	                   COL_CREATIONDATE, &creationDate,
-	                   COL_CREATOR, &creator,
-	                   COL_ASSIGNEDAGENT, &agent,
-	                   -1);
+	gtk_tree_model_get(model, &iter, COL_ID, &id, COL_TITLE, &title, COL_DESCRIPTION, &description, COL_PRIORITY, &priority, COL_STATE, &state, COL_CREATIONDATE, &creationDate, COL_CREATOR, &creator, COL_ASSIGNEDAGENT, &agent, -1);
 
 	GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
 	gtk_window_set_title(GTK_WINDOW(editTicketDialog), "Modifica ticket");
@@ -756,29 +765,45 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 		gtk_widget_set_sensitive(agentCombobox, 1);
 
 		GtkTreeIter agent_iter;
-		const enum Role role = AGENT;
 
-		RequestHeader req = {htons(5), htonl(sizeof(role))};
+		yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+		yyjson_mut_val *root = yyjson_mut_obj(doc);
+		yyjson_mut_doc_set_root(doc, root);
 
-		if (sendRequest(clientFD, &req, &role) < 0) {
+		yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
+		yyjson_mut_obj_add_str(doc, root, "method", "getUsers");
+		yyjson_mut_obj_add_int(doc, root, "id", 5);
+
+		yyjson_mut_val *params = yyjson_mut_obj(doc);
+		yyjson_mut_obj_add_int(doc, params, "role", AGENT);
+		yyjson_mut_obj_add_val(doc, root, "params", params);
+
+		if (sendJsonRpcMessage(clientFD, doc) < 0) {
 			showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
+			yyjson_mut_doc_free(doc);
 			return;
 		}
 
-		ResponseHeader resp;
-		User *agents = calloc(100, sizeof(User));
-
-		if (receiveResponse(clientFD, &resp, agents) < 0) {
+		yyjson_doc *resp_doc = NULL;
+		if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
 			showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
+			yyjson_mut_doc_free(doc);
 			return;
 		}
 
-		const uint32_t payloadBytes = ntohl(resp.payloadSize);
-		const uint32_t nAgents = payloadBytes / sizeof(User);
+		yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
+		yyjson_val *result = yyjson_obj_get(resp_root, "result");
 
-		for (int i = 0; i < nAgents; i++) {
-			gtk_list_store_append(agentListStore, &agent_iter);
-			gtk_list_store_set(agentListStore, &agent_iter, 0, agents[i].email, -1);
+		const uint32_t nAgents = yyjson_arr_size(result);
+
+		for (size_t i = 0; i < nAgents; ++i) {
+			yyjson_val *juser = yyjson_arr_get(result, i);
+			if (!juser || !yyjson_is_obj(juser)) continue;
+			yyjson_val *v = yyjson_obj_get(juser, "email");
+			const char *email = v && yyjson_is_str(v) ? yyjson_get_str(v) : "";
+			GtkTreeIter iter;
+			gtk_list_store_append(agentListStore, &iter);
+			gtk_list_store_set(agentListStore, &iter, 0, email, -1);
 		}
 
 		if (agent && strlen(agent) > 0) {
@@ -786,6 +811,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 		} else {
 			gtk_combo_box_set_active(GTK_COMBO_BOX(agentCombobox), -1);
 		}
+
 	} else {
 		gtk_widget_set_sensitive(agentCombobox, 0);
 
@@ -856,34 +882,40 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	const gint ticket_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
 	const char *creator = g_object_get_data(G_OBJECT(dialog), "ticket-creator");
 
-	Ticket edited = {0};
-	edited.id = ticket_id;
-	strncpy(edited.title, new_title, sizeof(edited.title) - 1);
-	strncpy(edited.description, new_desc, sizeof(edited.description) - 1);
-	edited.priority = atoi(priority_id);
-	edited.state = atoi(state_id);
-	edited.creationDate = time(NULL);
-	strncpy(edited.creator, creator, sizeof(edited.creator) - 1);
-	strncpy(edited.assignedAgent, agent_email, sizeof(edited.assignedAgent) - 1);
+	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+	yyjson_mut_val *root = yyjson_mut_obj(doc);
+
+	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
+	yyjson_mut_obj_add_str(doc, root, "method", "updateTicket");
+	yyjson_mut_obj_add_int(doc, root, "id", 2);
+
+	yyjson_mut_val *params = yyjson_mut_obj(doc);
+	yyjson_mut_obj_add_int(doc, params, "id", ticket_id);
+	yyjson_mut_obj_add_int(doc, params, "priority", priority_id);
+	yyjson_mut_obj_add_str(doc, params, "state", state_id);
+	yyjson_mut_obj_add_str(doc, params, "assignedAgent", "");
+	yyjson_mut_obj_add_val(doc, root, "params", params);
 
 	g_free(new_desc);
 
-	RequestHeader req = {htons(4), htonl(sizeof(Ticket))};
-
-	if (sendRequest(clientFD, &req, &edited) < 0) {
+	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
 		return;
 	}
 
-	ResponseHeader resp;
-
-	if (receiveResponse(clientFD, &resp, NULL) < 0) {
-		showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
+	yyjson_doc *resp_doc = NULL;
+	if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
+		showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
+		yyjson_mut_doc_free(doc);
 		return;
 	}
 
-	if (ntohs(resp.statusCode) != 200) {
-		gtk_label_set_text(errorLabel, resp.message);
+	yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
+	yyjson_val *error = yyjson_obj_get(resp_root, "error");
+
+	if (error) {
+		gtk_label_set_text(errorLabel, yyjson_get_str(yyjson_obj_get(error, "message")));
+		yyjson_mut_doc_free(doc);
 		gtk_widget_show(GTK_WIDGET(errorLabel));
 		return;
 	}
