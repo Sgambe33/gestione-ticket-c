@@ -154,8 +154,9 @@ void handleClient(const int socket) {
 					yyjson_mut_obj_add_str(resDoc, jsonTicket, "assignedAgent", tickets[i].assignedAgent);
 					yyjson_mut_arr_add_val(arr, jsonTicket);
 				}
+				//yyjson_mut_obj_add_arr(resDoc,  arr, "result");
 				yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
-				free(tickets);
+				//free(tickets);
 			} else {
 				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
 				yyjson_mut_obj_add_int(resDoc, err, "code", -32404);
@@ -201,8 +202,8 @@ void handleClient(const int socket) {
 			yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 		}
 
-		char *resJson = yyjson_mut_write(resDoc, 0, NULL);
-		log_message("INFO", "Response: %s", resJson);
+		//char *resJson = yyjson_mut_write(resDoc, 0, NULL);
+		//log_message("INFO", "Response: %s", resJson);
 
 		if(sendJsonRpcMessage(socket, resDoc) < 0){
 			log_error("ERRORE NELL'INVIO DEL JSON");
@@ -274,11 +275,12 @@ int main() {
 		inet_ntop(AF_INET, &cli_addr.sin_addr, ip, sizeof(ip));
 		log_message("INFO", "New connection from %s:%d (fd=%d)", ip, ntohs(cli_addr.sin_port), clientFD);
 
-		if (fork() == 0) {
-			close(serverFD);
-			handleClient(clientFD);
-			exit(0);
-		}
+		//if (fork() == 0) {
+		//	close(serverFD);
+	//		handleClient(clientFD);
+	//		exit(0);
+	//	}
+		handleClient(clientFD);
 
 		close(clientFD);
 	}

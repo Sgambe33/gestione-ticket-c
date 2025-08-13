@@ -15,8 +15,6 @@
 
 #define DEFAULT_PROTOCOL 0
 
-int clientFD;
-
 /**
  * @brief Callback for the login window delete event; close the client socket
  * and terminate the GTK main loop
