@@ -221,8 +221,10 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 
 	if (result_val) {
 		const char *email_str = yyjson_get_str(yyjson_obj_get(result_val, "email"));
-		strncpy(currentUser.name, email_str, sizeof(currentUser.name) - 1);
-		strncpy(currentUser.surname, email_str, sizeof(currentUser.surname) - 1);
+		const char *name_str = yyjson_get_str(yyjson_obj_get(result_val, "name"));
+		const char *surname_str = yyjson_get_str(yyjson_obj_get(result_val, "surname"));
+		strncpy(currentUser.name, name_str, sizeof(currentUser.name) - 1);
+		strncpy(currentUser.surname, surname_str, sizeof(currentUser.surname) - 1);
 		strncpy(currentUser.email, email_str, sizeof(currentUser.email) - 1);
 		currentUser.role = yyjson_get_int(yyjson_obj_get(result_val, "role"));
 		GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
@@ -280,6 +282,7 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 
 	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 	yyjson_mut_val *root = yyjson_mut_obj(doc);
+	yyjson_mut_doc_set_root(doc, root);
 
 	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(doc, root, "method", "createTicket");
@@ -289,13 +292,17 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	yyjson_mut_obj_add_str(doc, params, "title", title);
 	yyjson_mut_obj_add_str(doc, params, "description", description);
 	yyjson_mut_obj_add_int(doc, params, "priority", LOW);
-	yyjson_mut_obj_add_str(doc, params, "state", OPEN);
+	yyjson_mut_obj_add_int(doc, params, "state", OPEN);
 	yyjson_mut_obj_add_uint(doc, params, "creationDate", (long) time(NULL));
 	yyjson_mut_obj_add_str(doc, params, "creator", currentUser.email);
 	yyjson_mut_obj_add_str(doc, params, "assignedAgent", "");
 	yyjson_mut_obj_add_val(doc, root, "params", params);
 
-	g_free(description);
+	char *jsonStr = yyjson_mut_write(doc, 0, NULL);
+
+	printf("%s", jsonStr);
+
+	// g_free(description); TODO: Re-enable this free but after message has been sent
 
 	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
@@ -461,7 +468,15 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
 	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(filterModel), ticketFilterFunction, builder, NULL);
 
-	gtk_tree_view_set_model(ticketTreeView, GTK_TREE_MODEL(filterModel));
+	GtkTreeModel *sortModel = gtk_tree_model_sort_new_with_model(filterModel);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(ticketTreeView), sortModel);
+
+	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(sortModel);
+	gtk_tree_sortable_set_sort_column_id(sortable, COL_PRIORITY, GTK_SORT_ASCENDING);
+	gtk_tree_sortable_set_sort_column_id(sortable, COL_STATE, GTK_SORT_ASCENDING);
+	gtk_tree_sortable_set_sort_column_id(sortable, COL_CREATIONDATE, GTK_SORT_ASCENDING);
+	gtk_tree_sortable_set_sort_column_id(sortable, COL_ID, GTK_SORT_ASCENDING);
+
 
 	// Setup custom cell renderers
 	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
@@ -867,23 +882,28 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_combobox"));
 	GtkLabel *errorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
 
-	const char *new_title = gtk_entry_get_text(GTK_ENTRY(titleEntry));
+	const char *new_title = gtk_entry_get_text(GTK_ENTRY(titleEntry)); // TODO: is this value useful?
 
 	GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionText));
 	GtkTextIter start, end;
 	gtk_text_buffer_get_start_iter(buf, &start);
 	gtk_text_buffer_get_end_iter(buf, &end);
-	char *new_desc = gtk_text_buffer_get_text(buf, &start, &end, FALSE);
+	char *new_desc = gtk_text_buffer_get_text(buf, &start, &end, FALSE); // TODO: is this value useful?
 
 	const char *priority_id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo));
 	const char *state_id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(stateCombo));
 	const char *agent_email = gtk_combo_box_get_active_id(GTK_COMBO_BOX(agentCombo));
+	if (!agent_email) {
+		agent_email = "";
+	}
 
 	const gint ticket_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
-	const char *creator = g_object_get_data(G_OBJECT(dialog), "ticket-creator");
+	const char *creator = g_object_get_data(G_OBJECT(dialog), "ticket-creator"); // TODO: Check if this value is useful?
 
 	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 	yyjson_mut_val *root = yyjson_mut_obj(doc);
+	yyjson_mut_doc_set_root(doc, root);
+
 
 	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(doc, root, "method", "updateTicket");
@@ -891,12 +911,12 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 
 	yyjson_mut_val *params = yyjson_mut_obj(doc);
 	yyjson_mut_obj_add_int(doc, params, "id", ticket_id);
-	yyjson_mut_obj_add_int(doc, params, "priority", priority_id);
-	yyjson_mut_obj_add_str(doc, params, "state", state_id);
-	yyjson_mut_obj_add_str(doc, params, "assignedAgent", "");
+	yyjson_mut_obj_add_int(doc, params, "priority", atoi(priority_id));
+	yyjson_mut_obj_add_int(doc, params, "state", atoi(state_id));
+	yyjson_mut_obj_add_str(doc, params, "assignedAgent", agent_email);
 	yyjson_mut_obj_add_val(doc, root, "params", params);
 
-	g_free(new_desc);
+	// g_free(new_desc); TODO: Re-enable this free after message has been sent
 
 	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
