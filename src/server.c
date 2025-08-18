@@ -26,7 +26,7 @@ int serverFD;
  * @param fmt Format string containing format specifiers (e.g. "s", "d")
  * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
  */
-static void log_message(const char *level, const char *fmt, ...) {
+static void logMessage(const char *level, const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
 	struct tm *tm = localtime(&now);
@@ -45,7 +45,7 @@ static void log_message(const char *level, const char *fmt, ...) {
  * @param fmt Format string containing format specifiers (e.g. "s", "d")
  * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
  */
-static void log_error(const char *fmt, ...) {
+static void logError(const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
 	struct tm *tm = localtime(&now);
@@ -64,12 +64,12 @@ static void log_error(const char *fmt, ...) {
  * @param socket File descriptor of the connected client socket
  */
 void handleClient(const int socket) {
-	log_message("INFO", "Client handler started (fd=%d)", socket);
+	logMessage("INFO", "Client handler started (fd=%d)", socket);
 
 	while (1) {
 		yyjson_doc *reqDoc = NULL;
 		if (receiveJsonRpcMessage(socket, &reqDoc) != 0) {
-			log_message("INFO", "Client fd=%d disconnected or read error", socket);
+			logMessage("INFO", "Client fd=%d disconnected or read error", socket);
 			break;
 		}
 
@@ -79,7 +79,7 @@ void handleClient(const int socket) {
 		yyjson_val *paramsVal = yyjson_obj_get(root, "params");
 
 		if (!yyjson_is_str(methodVal)) {
-			log_error("Invalid request: missing method");
+			logError("Invalid request: missing method");
 			yyjson_doc_free(reqDoc);
 			continue;
 		}
@@ -87,9 +87,8 @@ void handleClient(const int socket) {
 		const char *method = yyjson_get_str(methodVal);
 		int requestId = yyjson_is_int(idVal) ? (int) yyjson_get_int(idVal) : 0;
 
-		log_message("INFO", "Received method=%s id=%d", method, requestId);
+		logMessage("INFO", "Received method=%s id=%d", method, requestId);
 
-		// Prepare a response document
 		yyjson_mut_doc *resDoc = yyjson_mut_doc_new(NULL);
 		yyjson_mut_val *resRoot = yyjson_mut_obj(resDoc);
 		yyjson_mut_doc_set_root(resDoc, resRoot);
@@ -97,14 +96,13 @@ void handleClient(const int socket) {
 		yyjson_mut_obj_add_str(resDoc, resRoot, "jsonrpc", "2.0");
 		yyjson_mut_obj_add_int(resDoc, resRoot, "id", requestId);
 
-		// LOGIN OK
 		if (strcmp(method, "login") == 0) {
 			const char *email = yyjson_get_str(yyjson_obj_get(paramsVal, "email"));
 			const char *password = yyjson_get_str(yyjson_obj_get(paramsVal, "password"));
 			User dbUser = getUser(email);
 
 			if (email && password && strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0) {
-				log_message("INFO", "User '%s' authenticated", email);
+				logMessage("INFO", "User '%s' authenticated", email);
 				yyjson_mut_val *result = yyjson_mut_obj(resDoc);
 				yyjson_mut_obj_add_str(resDoc, result, "name", dbUser.name);
 				yyjson_mut_obj_add_str(resDoc, result, "surname", dbUser.surname);
@@ -118,7 +116,7 @@ void handleClient(const int socket) {
 				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 			}
 
-		} else if (strcmp(method, "createTicket") == 0) { // TODO: CHECK IF CREATION DATE IS PARSED OK
+		} else if (strcmp(method, "createTicket") == 0) {
 			Ticket ticket = {0};
 
 			strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(paramsVal, "creator")), sizeof(ticket.creator) - 1);
@@ -141,7 +139,6 @@ void handleClient(const int socket) {
 			Ticket *tickets = NULL;
 			int count = getTicketList(email, &tickets);
 			if (count > 0) {
-				log_message("INFO", "Adding %d tickets to array!", count);
 				yyjson_mut_val *arr = yyjson_mut_arr(resDoc);
 				for (int i = 0; i < count; i++) {
 					yyjson_mut_val *jsonTicket = yyjson_mut_obj(resDoc);
@@ -155,9 +152,7 @@ void handleClient(const int socket) {
 					yyjson_mut_obj_add_str(resDoc, jsonTicket, "assignedAgent", tickets[i].assignedAgent);
 					yyjson_mut_arr_add_val(arr, jsonTicket);
 				}
-				// yyjson_mut_obj_add_arr(resDoc,  arr, "result");
 				yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
-				// free(tickets);
 			} else {
 				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
 				yyjson_mut_obj_add_int(resDoc, err, "code", -32404);
@@ -195,7 +190,6 @@ void handleClient(const int socket) {
 				yyjson_mut_arr_add_val(arr, u);
 			}
 			yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
-			free(users);
 		} else {
 			yyjson_mut_val *err = yyjson_mut_obj(resDoc);
 			yyjson_mut_obj_add_int(resDoc, err, "code", -32601);
@@ -203,18 +197,15 @@ void handleClient(const int socket) {
 			yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 		}
 
-		// char *resJson = yyjson_mut_write(resDoc, 0, NULL);
-		// log_message("INFO", "Response: %s", resJson);
-
 		if (sendJsonRpcMessage(socket, resDoc) < 0) {
-			log_error("ERRORE NELL'INVIO DEL JSON");
+			logError("Error while sending response to client");
 		}
 
 		yyjson_mut_doc_free(resDoc);
 		yyjson_doc_free(reqDoc);
 	}
 
-	log_message("INFO", "Closing client socket fd=%d", socket);
+	logMessage("INFO", "Closing client socket fd=%d", socket);
 	close(socket);
 }
 
@@ -228,13 +219,13 @@ static void terminateServer() {
 }
 
 int main() {
-	log_message("INFO", "Starting server...");
+	logMessage("INFO", "Starting server...");
 	createDb();
 	createTables();
 
 	serverFD = socket(AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
 	if (serverFD < 0) {
-		log_error("socket()");
+		logError("socket()");
 		return 1;
 	}
 
@@ -245,36 +236,36 @@ int main() {
 
 	const int yes = 1;
 	if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
-		log_error("setsockopt(SO_REUSEADDR)");
+		logError("setsockopt(SO_REUSEADDR)");
 		close(serverFD);
 		return 1;
 	}
 
 	if (bind(serverFD, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		log_error("bind()");
+		logError("bind()");
 		return 1;
 	}
 	if (listen(serverFD, MAX_PENDING_CONNECTIONS) < 0) {
-		log_error("listen()");
+		logError("listen()");
 		return 1;
 	}
-	log_message("INFO", "Server listening on 127.0.0.1:1420");
+	logMessage("INFO", "Server listening on 127.0.0.1:1420");
 
 	signal(SIGCHLD, SIG_IGN);
 	signal(SIGINT, terminateServer);
 	signal(SIGTERM, terminateServer);
 
 	while (1) {
-		struct sockaddr_in cli_addr;
-		socklen_t len = sizeof(cli_addr);
-		const int clientFD = accept(serverFD, (struct sockaddr *) &cli_addr, &len);
+		struct sockaddr_in cliAddr;
+		socklen_t len = sizeof(cliAddr);
+		const int clientFD = accept(serverFD, (struct sockaddr *) &cliAddr, &len);
 		if (clientFD < 0) {
-			log_error("accept()");
+			logError("accept()");
 			continue;
 		}
 		char ip[INET_ADDRSTRLEN];
-		inet_ntop(AF_INET, &cli_addr.sin_addr, ip, sizeof(ip));
-		log_message("INFO", "New connection from %s:%d (fd=%d)", ip, ntohs(cli_addr.sin_port), clientFD);
+		inet_ntop(AF_INET, &cliAddr.sin_addr, ip, sizeof(ip));
+		logMessage("INFO", "New connection from %s:%d (fd=%d)", ip, ntohs(cliAddr.sin_port), clientFD);
 
 		if (fork() == 0) {
 			close(serverFD);
