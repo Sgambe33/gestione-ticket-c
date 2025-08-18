@@ -10,41 +10,41 @@ char *stateToString(enum State state);
 
 char *priorityToString(enum Priority priority);
 
-gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer data);
+gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer userData);
 
-gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data);
+gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer userData);
 
-void onLoginButtonClicked(GtkButton *button, gpointer user_data);
+void onLoginButtonClicked(GtkButton *button, gpointer userData);
 
-void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData);
 
-void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData);
 
-void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
+void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData);
 
-void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data);
+void onDisconnectButtonClicked(GtkWidget *widget, gpointer userData);
 
-void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data);
+void onSaveTicketButtonClicked(GtkWidget *widget, gpointer userData);
 
-void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data);
+void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer userData);
 
-void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data);
+void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer userData);
 
-void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data);
+void onAddTicketButtonClicked(GtkWidget *widget, gpointer userData);
 
-void onSearchButtonClicked(GtkWidget *widget, gpointer user_data);
+void onSearchButtonClicked(GtkWidget *widget, gpointer userData);
 
-void updateTicketFilter(GtkWidget *widget, gpointer user_data);
+void updateTicketFilter(GtkWidget *widget, gpointer userData);
 
-int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer userData);
 
-void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data);
+void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer userData);
 
-void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data);
+void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData);
 
 void refreshTicketList();
 
 void showErrorDialog(GtkWindow *parent, const char *message);
 
-void initMainWindow(GtkWidget *window, gpointer user_data);
+void initMainWindow(GtkWidget *window, gpointer userData);
 #endif // GUI_H

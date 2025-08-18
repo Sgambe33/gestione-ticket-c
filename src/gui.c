@@ -47,9 +47,9 @@ char *priorityToString(const enum Priority priority) {
  * @param renderer Pointer to the GtkCellRenderer used to draw the cell
  * @param model Pointer to the GtkTreeModel containing the data
  * @param iter Pointer to the GtkTreeIter indicating the current row in the model
- * @param user_data Pointer to additional user data - not used
+ * @param userData Pointer to additional user data - not used
  */
-void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
+void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData) {
 	int priority;
 	gtk_tree_model_get(model, iter, COL_PRIORITY, &priority, -1);
 	g_object_set(renderer, "text", priorityToString(priority), NULL);
@@ -61,9 +61,9 @@ void renderPriority(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeMo
  * @param renderer Pointer to the GtkCellRenderer used to draw the cell
  * @param model Pointer to the GtkTreeModel containing the data
  * @param iter Pointer to the GtkTreeIter indicating the current row in the model
- * @param user_data Pointer to additional user data - not used
+ * @param userData Pointer to additional user data - not used
  */
-void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
+void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData) {
 	int state;
 	gtk_tree_model_get(model, iter, COL_STATE, &state, -1);
 	g_object_set(renderer, "text", stateToString(state), NULL);
@@ -75,21 +75,21 @@ void renderState(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel
  * @param renderer Pointer to the GtkCellRenderer used to draw the cell
  * @param model Pointer to the GtkTreeModel containing the data
  * @param iter Pointer to the GtkTreeIter indicating the current row in the model
- * @param user_data Pointer to additional user data - not used
+ * @param userData Pointer to additional user data - not used
  */
-void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
+void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel *model, GtkTreeIter *iter, gpointer userData) {
 	time_t creationDate = 0;
 	gtk_tree_model_get(model, iter, COL_CREATIONDATE, &creationDate, -1);
 
-	char date_buf[32] = "Invalid date";
+	char dateBuffer[32] = "Invalid date";
 	if (creationDate > 0) {
 		struct tm tm;
 		if (localtime_r(&creationDate, &tm)) {
-			strftime(date_buf, sizeof date_buf, "%H:%M %d-%m-%Y", &tm);
+			strftime(dateBuffer, sizeof dateBuffer, "%H:%M %d-%m-%Y", &tm);
 		}
 	}
 
-	g_object_set(renderer, "text", date_buf, NULL);
+	g_object_set(renderer, "text", dateBuffer, NULL);
 }
 
 /**
@@ -98,10 +98,10 @@ void renderDate(GtkTreeViewColumn *col, GtkCellRenderer *renderer, GtkTreeModel 
  * @param location Pointer to a GtkTextIter indicating where the insertion occurs
  * @param text Pointer to the UTF_8 text being inserted
  * @param len Number of bytes in @p text (not necessarily characters).
- * @param user_data Pointer containing the character limit, passed as a GPOINTER_TO_INT
+ * @param userData Pointer containing the character limit, passed as a GPOINTER_TO_INT
  */
-void onTextBufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer user_data) {
-	const gint limit = GPOINTER_TO_INT(user_data);
+void onTextBufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const gchar *text, const gint len, gpointer userData) {
+	const gint limit = GPOINTER_TO_INT(userData);
 	const gint currentLength = gtk_text_buffer_get_char_count(buffer);
 
 	if (currentLength >= limit) {
@@ -111,9 +111,9 @@ void onTextBufferInsertText(GtkTextBuffer *buffer, GtkTextIter *location, const 
 
 	if (currentLength + len > limit) {
 		const gint allowed = limit - currentLength;
-		g_signal_handlers_block_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
+		g_signal_handlers_block_by_func(buffer, G_CALLBACK(onTextBufferInsertText), userData);
 		gtk_text_buffer_insert(buffer, location, text, allowed);
-		g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(onTextBufferInsertText), user_data);
+		g_signal_handlers_unblock_by_func(buffer, G_CALLBACK(onTextBufferInsertText), userData);
 		g_signal_stop_emission_by_name(buffer, "insert-text");
 	}
 }
@@ -136,10 +136,10 @@ gboolean onDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer data) {
  * @brief Handle the main window's delete-event by closing the client connection and terminating the GTK main loop
  * @param widget Pointer to the GtkWidget that received the delete-event
  * @param event Pointer to the GdkEvent triggering the signal (destroying the window) - not used
- * @param user_data Pointer to additional user data - not used
+ * @param userData Pointer to additional user data - not used
  * @returns FALSE to propagate the event further and allow the default destruction behavior
  */
-gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
+gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer userData) {
 	if (clientFD >= 0) {
 		close(clientFD);
 		clientFD = -1;
@@ -154,10 +154,10 @@ gboolean onMainWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer us
 /**
  * @brief Callback for the login button click event; handles user login
  * @param button Pointer to the GtkButton that was clicked (the login button)
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onLoginButtonClicked(GtkButton *button, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *emailEntry = GTK_WIDGET(gtk_builder_get_object(builder, "email_entry"));
 	GtkWidget *passwordEntry = GTK_WIDGET(gtk_builder_get_object(builder, "password_entry"));
 	GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "login_error_label"));
@@ -172,7 +172,6 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 		return;
 	}
 
-	// Create JSON-RPC request doc
 	yyjson_mut_doc *req = yyjson_mut_doc_new(NULL);
 	yyjson_mut_val *root = yyjson_mut_obj(req);
 	yyjson_mut_doc_set_root(req, root);
@@ -180,16 +179,13 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 	yyjson_mut_obj_add_str(req, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(req, root, "method", "login");
 
-	// Create params object with email and password
 	yyjson_mut_val *params = yyjson_mut_obj(req);
 	yyjson_mut_obj_add_str(req, params, "email", email);
 	yyjson_mut_obj_add_str(req, params, "password", password);
 	yyjson_mut_obj_add_val(req, root, "params", params);
 
-	// Set a request id (can be any int, here 1)
 	yyjson_mut_obj_add_int(req, root, "id", 1);
 
-	// Send the JSON-RPC request (you need to implement sendJsonRpcMessage similar to your example)
 	if (sendJsonRpcMessage(clientFD, req) < 0) {
 		yyjson_mut_doc_free(req);
 		showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
@@ -197,36 +193,33 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 	}
 	yyjson_mut_doc_free(req);
 
-	// Receive JSON-RPC response
 	yyjson_doc *resp = NULL;
 	if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
 		showErrorDialog(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button))), "Errore di rete durante il login");
 		return;
 	}
 
-	// Parse response
-	yyjson_val *resp_root = yyjson_doc_get_root(resp);
-	yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
-	yyjson_val *result_val = yyjson_obj_get(resp_root, "result");
+	yyjson_val *responseRoot = yyjson_doc_get_root(resp);
+	yyjson_val *errorVal = yyjson_obj_get(responseRoot, "error");
+	yyjson_val *resultVal = yyjson_obj_get(responseRoot, "result");
 
-	if (error_val) {
-		// Extract error message if available
-		yyjson_val *message_val = yyjson_obj_get(error_val, "message");
-		const char *err_msg = message_val ? yyjson_get_str(message_val) : "Errore sconosciuto dal server";
-		gtk_label_set_text(GTK_LABEL(errorLabel), err_msg);
+	if (errorVal) {
+		yyjson_val *messageVal = yyjson_obj_get(errorVal, "message");
+		const char *errorMessage = messageVal ? yyjson_get_str(messageVal) : "Errore sconosciuto dal server";
+		gtk_label_set_text(GTK_LABEL(errorLabel), errorMessage);
 		gtk_widget_show(errorLabel);
 		yyjson_doc_free(resp);
 		return;
 	}
 
-	if (result_val) {
-		const char *email_str = yyjson_get_str(yyjson_obj_get(result_val, "email"));
-		const char *name_str = yyjson_get_str(yyjson_obj_get(result_val, "name"));
-		const char *surname_str = yyjson_get_str(yyjson_obj_get(result_val, "surname"));
-		strncpy(currentUser.name, name_str, sizeof(currentUser.name) - 1);
-		strncpy(currentUser.surname, surname_str, sizeof(currentUser.surname) - 1);
-		strncpy(currentUser.email, email_str, sizeof(currentUser.email) - 1);
-		currentUser.role = yyjson_get_int(yyjson_obj_get(result_val, "role"));
+	if (resultVal) {
+		const char *emailStr = yyjson_get_str(yyjson_obj_get(resultVal, "email"));
+		const char *nameStr = yyjson_get_str(yyjson_obj_get(resultVal, "name"));
+		const char *surnameStr = yyjson_get_str(yyjson_obj_get(resultVal, "surname"));
+		strncpy(currentUser.name, nameStr, sizeof(currentUser.name) - 1);
+		strncpy(currentUser.surname, surnameStr, sizeof(currentUser.surname) - 1);
+		strncpy(currentUser.email, emailStr, sizeof(currentUser.email) - 1);
+		currentUser.role = yyjson_get_int(yyjson_obj_get(resultVal, "role"));
 		GtkWidget *loginWin = GTK_WIDGET(gtk_builder_get_object(builder, "login_window"));
 		GtkWidget *mainWin = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
 		gtk_widget_hide(loginWin);
@@ -243,10 +236,10 @@ void onLoginButtonClicked(GtkButton *button, gpointer user_data) {
 /**
  * @brief Callaback for the disconnect button click event
  * @param widget Pointer to the GtkWidget that was clicked (the disconnect button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onDisconnectButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *mainWindow = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
 
 	gtk_main_quit();
@@ -256,10 +249,10 @@ void onDisconnectButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Callback for the save ticket button click event
  * @param widget Pointer to the GtkWidget that was clicked (the save ticket button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onSaveTicketButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
 	GtkWidget *descriptionText = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
 	GtkWidget *errorLabel = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_edit_error_label"));
@@ -298,32 +291,30 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	yyjson_mut_obj_add_str(doc, params, "assignedAgent", "");
 	yyjson_mut_obj_add_val(doc, root, "params", params);
 
-	char *jsonStr = yyjson_mut_write(doc, 0, NULL);
-
-	printf("%s", jsonStr);
-
-	// g_free(description); TODO: Re-enable this free but after message has been sent
-
 	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
+		g_free(description);
 		return;
 	}
 
 	yyjson_doc *resp = NULL;
 	if (receiveJsonRpcMessage(clientFD, &resp) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante la creazione del ticket");
+		g_free(description);
 		return;
 	}
 
-	yyjson_val *resp_root = yyjson_doc_get_root(resp);
-	yyjson_val *error_val = yyjson_obj_get(resp_root, "error");
+	yyjson_val *responseRoot = yyjson_doc_get_root(resp);
+	yyjson_val *errorVal = yyjson_obj_get(responseRoot, "error");
 
-	if (error_val) {
-		gtk_label_set_text(GTK_LABEL(errorLabel), yyjson_get_str(yyjson_obj_get(error_val, "message")));
+	if (errorVal) {
+		gtk_label_set_text(GTK_LABEL(errorLabel), yyjson_get_str(yyjson_obj_get(errorVal, "message")));
 		gtk_widget_show(errorLabel);
+		g_free(description);
 		return;
 	}
 
+	g_free(description);
 	gtk_entry_set_text(GTK_ENTRY(titleEntry), "");
 	GtkTextBuffer *descBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionText));
 	gtk_text_buffer_set_text(descBuffer, "Descrizione del problema...", -1);
@@ -338,11 +329,10 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Callback for the discard search button click event
  * @param widget Pointer to the GtkWidget that was clicked (the discard search button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
-
+void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
 	gtk_entry_set_text(GTK_ENTRY(titleEntry), "");
 	GtkWidget *descriptionEntry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
@@ -381,10 +371,10 @@ void onDiscardSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Callback for the discard add ticket button click event
  * @param widget Pointer to the GtkWidget that was clicked (the discard add ticket button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
 	gtk_entry_set_text(GTK_ENTRY(titleEntry), "");
@@ -399,10 +389,10 @@ void onDiscardAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Callback for the add ticket button click event
  * @param widget Pointer to the GtkWidget that was clicked (the discard add ticket button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onAddTicketButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
 	gtk_window_set_title(GTK_WINDOW(editTicketDialog), "Aggiungi ticket");
 	gtk_widget_show_all(editTicketDialog);
@@ -429,14 +419,14 @@ void onAddTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Initialize the main application window and its related UI components
  * @param window Pointer to the GtkWidget representing the main application window
- * @param user_data Pointer to user data passed during initialization
+ * @param userData Pointer to user data passed during initialization
  */
-void initMainWindow(GtkWidget *window, gpointer user_data) {
+void initMainWindow(GtkWidget *window, gpointer userData) {
 	if (initialized) {
 		return;
 	}
 	mainWindow = GTK_WINDOW(window);
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	ticketTreeView = GTK_TREE_VIEW(gtk_builder_get_object(builder, "treeview_items"));
 	store = GTK_LIST_STORE(gtk_builder_get_object(builder, "liststore_items"));
 	GtkWidget *editDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
@@ -447,7 +437,6 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	snprintf(welcomeText, sizeof(welcomeText), "Benvenuto/a %s %s", currentUser.name, currentUser.surname);
 	gtk_label_set_text(welcomeLabel, welcomeText);
 
-	// Connect signals callbacks
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	g_signal_connect(gtk_builder_get_object(builder, "add_ticket_button"), "clicked", G_CALLBACK(onAddTicketButtonClicked), builder);
 	g_signal_connect(gtk_builder_get_object(builder, "disconnect_button"), "clicked", G_CALLBACK(onDisconnectButtonClicked), builder);
@@ -456,7 +445,6 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	g_signal_connect(editDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
 	g_signal_connect(searchDialog, "delete-event", G_CALLBACK(onDeleteEvent), NULL);
 
-	// If agent or super agent, handle ticket selection. Otherwise disable creator column
 	if (currentUser.role == SUPER_AGENT || currentUser.role == AGENT) {
 		g_signal_connect(ticketTreeView, "row-activated", G_CALLBACK(onTicketRowSelected), builder);
 		gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(builder, "add_ticket_button")), FALSE);
@@ -468,7 +456,7 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
 	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(filterModel), ticketFilterFunction, builder, NULL);
 
-	GtkTreeModel *sortModel = gtk_tree_model_sort_new_with_model(filterModel);
+	GtkTreeModel *sortModel = gtk_tree_model_sort_new_with_model(GTK_TREE_MODEL(filterModel));
 	gtk_tree_view_set_model(GTK_TREE_VIEW(ticketTreeView), sortModel);
 
 	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(sortModel);
@@ -477,13 +465,11 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 	gtk_tree_sortable_set_sort_column_id(sortable, COL_CREATIONDATE, GTK_SORT_ASCENDING);
 	gtk_tree_sortable_set_sort_column_id(sortable, COL_ID, GTK_SORT_ASCENDING);
 
-
-	// Setup custom cell renderers
 	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_priority")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_priority")), renderPriority, NULL, NULL);
 	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_status")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_status")), renderState, NULL, NULL);
 	gtk_tree_view_column_set_cell_data_func(GTK_TREE_VIEW_COLUMN(gtk_builder_get_object(builder, "col_date")), GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_date")), renderDate, NULL, NULL);
-	GtkCellRenderer *renderer_desc = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_desc"));
-	g_object_set(renderer_desc, "wrap-mode", PANGO_WRAP_WORD_CHAR, "wrap-width", 300, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
+	GtkCellRenderer *rendererDescription = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "renderer_desc"));
+	g_object_set(rendererDescription, "wrap-mode", PANGO_WRAP_WORD_CHAR, "wrap-width", 300, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
 
 	refreshTicketList();
 
@@ -492,9 +478,6 @@ void initMainWindow(GtkWidget *window, gpointer user_data) {
 
 /**
  * @brief Request and refresh the ticket list from the server
- * @warning The function allocates temporary memory for up to 100 tickets,
- *          which is freed before returning. If more than 100 tickets exist,
- *          the extra tickets will not be retrieved.
  */
 void refreshTicketList() {
 	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
@@ -515,19 +498,20 @@ void refreshTicketList() {
 		return;
 	}
 
-	yyjson_doc *resp_doc;
+	yyjson_doc *responseDoc;
 
-	if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
+	if (receiveJsonRpcMessage(clientFD, &responseDoc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante il recupero dei ticket");
 		return;
 	}
 
 	gtk_list_store_clear(store);
 
-	yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
-	yyjson_val *result = yyjson_obj_get(resp_root, "result");
+	yyjson_val *responseRoot = yyjson_doc_get_root(responseDoc);
+	yyjson_val *result = yyjson_obj_get(responseRoot, "result");
 
 	const uint32_t nTickets = yyjson_arr_size(result);
+	GtkTreeIter iter;
 
 	for (size_t i = 0; i < nTickets; ++i) {
 		yyjson_val *jticket = yyjson_arr_get(result, i);
@@ -559,21 +543,20 @@ void refreshTicketList() {
 		v = yyjson_obj_get(jticket, "assignedAgent");
 		const char *assignedAgent = v ? yyjson_get_str(v) : "";
 
-		GtkTreeIter iter; // Forse va fuori dal for?
 		gtk_list_store_append(store, &iter);
 		gtk_list_store_set(store, &iter, COL_ID, id, COL_TITLE, title, COL_DESCRIPTION, description, COL_CREATIONDATE, (gint) creationDate, COL_PRIORITY, priority, COL_STATE, state, COL_CREATOR, creator, COL_ASSIGNEDAGENT, assignedAgent, -1);
 	}
 
-	yyjson_doc_free(resp_doc);
+	yyjson_doc_free(responseDoc);
 }
 
 /**
  * @brief Handle the search button click event by displaying the search ticket dialog, setting up related UI elements, and populating the agent list with unique assigned agent emails from the ticket list
  * @param widget Pointer to the GtkWidget that triggered the callback (the search button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onSearchButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkWidget *searchTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_dialog"));
 	gtk_widget_show_all(searchTicketDialog);
 	GtkWidget *searchTicketButton = GTK_WIDGET(gtk_builder_get_object(builder, "search_ticket_button"));
@@ -613,15 +596,15 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer user_data) {
 /**
  * @brief Callback for updating the ticket filter and showing/hiding the "no results" label
  * @param widget Pointer to the GtkWidget that triggered the callback (the search ticket button) - not used
- * @param user_data Pointer passed during signal connection - not used
+ * @param userData Pointer passed during signal connection - not used
  */
-void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
+void updateTicketFilter(GtkWidget *widget, gpointer userData) {
 	GtkWidget *noResultLabel = g_object_get_data(G_OBJECT(ticketTreeView), "no_tickets_found_label");
 	GtkTreeModelFilter *filter = GTK_TREE_MODEL_FILTER(gtk_tree_view_get_model(ticketTreeView));
 	gtk_tree_model_filter_refilter(filter);
 
-	GtkTreeModel *filtered_model = GTK_TREE_MODEL(filter);
-	const gint rowsCount = gtk_tree_model_iter_n_children(filtered_model, NULL);
+	GtkTreeModel *filterModel = GTK_TREE_MODEL(filter);
+	const gint rowsCount = gtk_tree_model_iter_n_children(filterModel, NULL);
 
 	if (rowsCount == 0) {
 		gtk_widget_show(noResultLabel);
@@ -634,33 +617,33 @@ void updateTicketFilter(GtkWidget *widget, gpointer user_data) {
  * @brief Filter function for the ticket list rows based on active search criteria
  * @param model Pointer to the GtkTreeModel containing the ticket data
  * @param iter Pointer to a GtkTreeIter for the current row being tested
- * @param user_data Pointer to user data passed during filter setup
+ * @param userData Pointer to user data passed during filter setup
  * @returns 1 if the row matches the filters, 0 otherwise
  */
-int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
-	GtkWidget *title_entry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
-	GtkWidget *description_entry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
-	GtkWidget *priority_combo = GTK_WIDGET(gtk_builder_get_object(builder, "priority_filter_combobox"));
-	GtkWidget *state_combo = GTK_WIDGET(gtk_builder_get_object(builder, "state_filter_combobox"));
-	GtkWidget *agent_combo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_filter_combobox"));
+int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
+	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "title_filter_entry"));
+	GtkWidget *descriptionEntry = GTK_WIDGET(gtk_builder_get_object(builder, "description_filter_entry"));
+	GtkWidget *priorityCombo = GTK_WIDGET(gtk_builder_get_object(builder, "priority_filter_combobox"));
+	GtkWidget *stateCombo = GTK_WIDGET(gtk_builder_get_object(builder, "state_filter_combobox"));
+	GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_filter_combobox"));
 	GtkWidget *calendar = GTK_WIDGET(gtk_builder_get_object(builder, "date_filter_calendar"));
 
-	GtkWidget *enable_title = GTK_WIDGET(gtk_builder_get_object(builder, "enable_title_filter"));
-	GtkWidget *enable_description = GTK_WIDGET(gtk_builder_get_object(builder, "enable_description_filter"));
-	GtkWidget *enable_priority = GTK_WIDGET(gtk_builder_get_object(builder, "enable_priority_filter"));
-	GtkWidget *enable_state = GTK_WIDGET(gtk_builder_get_object(builder, "enable_state_filter"));
-	GtkWidget *enable_agent = GTK_WIDGET(gtk_builder_get_object(builder, "enable_agent_filter"));
-	GtkWidget *enable_date = GTK_WIDGET(gtk_builder_get_object(builder, "enable_date_filter"));
+	GtkWidget *enableTitle = GTK_WIDGET(gtk_builder_get_object(builder, "enable_title_filter"));
+	GtkWidget *enableDescription = GTK_WIDGET(gtk_builder_get_object(builder, "enable_description_filter"));
+	GtkWidget *enablePriority = GTK_WIDGET(gtk_builder_get_object(builder, "enable_priority_filter"));
+	GtkWidget *enableState = GTK_WIDGET(gtk_builder_get_object(builder, "enable_state_filter"));
+	GtkWidget *enableAgent = GTK_WIDGET(gtk_builder_get_object(builder, "enable_agent_filter"));
+	GtkWidget *enableDate = GTK_WIDGET(gtk_builder_get_object(builder, "enable_date_filter"));
 
-	const char *title_filter = gtk_entry_get_text(GTK_ENTRY(title_entry));
-	const char *description_filter = gtk_entry_get_text(GTK_ENTRY(description_entry));
-	GtkTreeIter combo_iter;
-	GtkTreeModel *combo_model = gtk_combo_box_get_model(GTK_COMBO_BOX(agent_combo));
-	char *selected_agent = NULL;
+	const char *titleFilter = gtk_entry_get_text(GTK_ENTRY(titleEntry));
+	const char *descriptionFilter = gtk_entry_get_text(GTK_ENTRY(descriptionEntry));
+	GtkTreeIter comboIter;
+	GtkTreeModel *comboModel = gtk_combo_box_get_model(GTK_COMBO_BOX(agentCombo));
+	char *selectedAgent = NULL;
 
-	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(agent_combo), &combo_iter)) {
-		gtk_tree_model_get(combo_model, &combo_iter, 0, &selected_agent, -1);
+	if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(agentCombo), &comboIter)) {
+		gtk_tree_model_get(comboModel, &comboIter, 0, &selectedAgent, -1);
 	}
 
 	guint year, month, day;
@@ -672,61 +655,61 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
 
 	char *title, *desc, *agent;
 	int priority, state;
-	time_t creation_date;
+	time_t creationDate;
 
-	gtk_tree_model_get(model, iter, COL_TITLE, &title, COL_DESCRIPTION, &desc, COL_PRIORITY, &priority, COL_STATE, &state, COL_ASSIGNEDAGENT, &agent, COL_CREATIONDATE, &creation_date, -1);
+	gtk_tree_model_get(model, iter, COL_TITLE, &title, COL_DESCRIPTION, &desc, COL_PRIORITY, &priority, COL_STATE, &state, COL_ASSIGNEDAGENT, &agent, COL_CREATIONDATE, &creationDate, -1);
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_title)) && title_filter[0]) {
-		char *title_lower = g_utf8_strdown(title, -1);
-		char *filter_lower = g_utf8_strdown(title_filter, -1);
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enableTitle)) && titleFilter[0]) {
+		char *titleLower = g_utf8_strdown(title, -1);
+		char *filterLower = g_utf8_strdown(titleFilter, -1);
 
-		gboolean match = g_strstr_len(title_lower, -1, filter_lower) != NULL;
+		gboolean match = g_strstr_len(titleLower, -1, filterLower) != NULL;
 
-		free(title_lower);
-		free(filter_lower);
-
-		if (!match) {
-			return 0;
-		}
-	}
-
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_description)) && description_filter[0]) {
-		char *desc_lower = g_utf8_strdown(desc, -1);
-		char *filter_lower = g_utf8_strdown(description_filter, -1);
-
-		const gboolean match = g_strstr_len(desc_lower, -1, filter_lower) != NULL;
-
-		free(desc_lower);
-		free(filter_lower);
+		free(titleLower);
+		free(filterLower);
 
 		if (!match) {
 			return 0;
 		}
 	}
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_priority))) {
-		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priority_combo))[0] - '0') {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enableDescription)) && descriptionFilter[0]) {
+		char *descLower = g_utf8_strdown(desc, -1);
+		char *filterLower = g_utf8_strdown(descriptionFilter, -1);
+
+		const gboolean match = g_strstr_len(descLower, -1, filterLower) != NULL;
+
+		free(descLower);
+		free(filterLower);
+
+		if (!match) {
 			return 0;
 		}
 	}
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_state))) {
-		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(state_combo))[0] - '0') {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enablePriority))) {
+		if (priority != gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo))[0] - '0') {
 			return 0;
 		}
 	}
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_agent)) && selected_agent != NULL) {
-		if (g_strcmp0(selected_agent, agent) != 0) {
-			g_free(selected_agent);
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enableState))) {
+		if (state != gtk_combo_box_get_active_id(GTK_COMBO_BOX(stateCombo))[0] - '0') {
 			return 0;
 		}
-		g_free(selected_agent);
 	}
 
-	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enable_date))) {
-		struct tm *ticket_date = localtime(&creation_date);
-		if (ticket_date->tm_year != date.tm_year || ticket_date->tm_mon != date.tm_mon || ticket_date->tm_mday != date.tm_mday) {
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enableAgent)) && selectedAgent != NULL) {
+		if (g_strcmp0(selectedAgent, agent) != 0) {
+			g_free(selectedAgent);
+			return 0;
+		}
+		g_free(selectedAgent);
+	}
+
+	if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(enableDate))) {
+		struct tm *ticketDate = localtime(&creationDate);
+		if (ticketDate->tm_year != date.tm_year || ticketDate->tm_mon != date.tm_mon || ticketDate->tm_mday != date.tm_mday) {
 			return 0;
 		}
 	}
@@ -739,10 +722,10 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer user_d
  * @param treeview Pointer to the GtkTreeView containing the ticket rows
  * @param path Pointer to the GtkTreePath of the selected row
  * @param column Pointer to the GtkTreeViewColumn that was clicked - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 	GtkTreeModel *model = gtk_tree_view_get_model(treeview);
 	GtkTreeIter iter;
 
@@ -779,7 +762,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	if (currentUser.role == SUPER_AGENT) {
 		gtk_widget_set_sensitive(agentCombobox, 1);
 
-		GtkTreeIter agent_iter;
+		GtkTreeIter agentIter;
 
 		yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 		yyjson_mut_val *root = yyjson_mut_obj(doc);
@@ -799,21 +782,23 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 			return;
 		}
 
-		yyjson_doc *resp_doc = NULL;
-		if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
+		yyjson_doc *responseDoc = NULL;
+		if (receiveJsonRpcMessage(clientFD, &responseDoc) < 0) {
 			showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
 			yyjson_mut_doc_free(doc);
 			return;
 		}
 
-		yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
-		yyjson_val *result = yyjson_obj_get(resp_root, "result");
+		yyjson_val *responseRoot = yyjson_doc_get_root(responseDoc);
+		yyjson_val *result = yyjson_obj_get(responseRoot, "result");
 
 		const uint32_t nAgents = yyjson_arr_size(result);
 
 		for (size_t i = 0; i < nAgents; ++i) {
 			yyjson_val *juser = yyjson_arr_get(result, i);
-			if (!juser || !yyjson_is_obj(juser)) continue;
+			if (!juser || !yyjson_is_obj(juser)) {
+				continue;
+			}
 			yyjson_val *v = yyjson_obj_get(juser, "email");
 			const char *email = v && yyjson_is_str(v) ? yyjson_get_str(v) : "";
 			GtkTreeIter iter;
@@ -830,20 +815,20 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	} else {
 		gtk_widget_set_sensitive(agentCombobox, 0);
 
-		GtkTreeIter agent_iter;
-		gtk_list_store_append(agentListStore, &agent_iter);
-		gtk_list_store_set(agentListStore, &agent_iter, 0, agent, -1);
+		GtkTreeIter agentIter;
+		gtk_list_store_append(agentListStore, &agentIter);
+		gtk_list_store_set(agentListStore, &agentIter, 0, agent, -1);
 		gtk_combo_box_set_active_id(GTK_COMBO_BOX(agentCombobox), agent);
 	}
 
-	gchar *priority_id = g_strdup_printf("%d", priority);
-	gchar *state_id = g_strdup_printf("%d", state);
+	gchar *priorityId = g_strdup_printf("%d", priority);
+	gchar *stateId = g_strdup_printf("%d", state);
 
-	gtk_combo_box_set_active_id(GTK_COMBO_BOX(priorityComboBox), priority_id);
-	gtk_combo_box_set_active_id(GTK_COMBO_BOX(stateCombobox), state_id);
+	gtk_combo_box_set_active_id(GTK_COMBO_BOX(priorityComboBox), priorityId);
+	gtk_combo_box_set_active_id(GTK_COMBO_BOX(stateCombobox), stateId);
 
-	g_free(priority_id);
-	g_free(state_id);
+	g_free(priorityId);
+	g_free(stateId);
 
 	gtk_widget_set_sensitive(titleEntry, 0);
 	gtk_widget_set_sensitive(descriptionTextView, 0);
@@ -869,10 +854,10 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 /**
  * @brief Callback for the save button in the edit ticket dialog; send updated ticket data to the server
  * @param widget Pointer to the GtkWidget that was clicked (the save button) - not used
- * @param user_data Pointer to user data passed during signal connection
+ * @param userData Pointer to user data passed during signal connection
  */
-void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
-	GtkBuilder *builder = GTK_BUILDER(user_data);
+void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
 
 	GtkWidget *dialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
 	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
@@ -882,56 +867,48 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer user_data) {
 	GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_combobox"));
 	GtkLabel *errorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
 
-	const char *new_title = gtk_entry_get_text(GTK_ENTRY(titleEntry)); // TODO: is this value useful?
-
 	GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionText));
 	GtkTextIter start, end;
 	gtk_text_buffer_get_start_iter(buf, &start);
 	gtk_text_buffer_get_end_iter(buf, &end);
-	char *new_desc = gtk_text_buffer_get_text(buf, &start, &end, FALSE); // TODO: is this value useful?
 
-	const char *priority_id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo));
-	const char *state_id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(stateCombo));
-	const char *agent_email = gtk_combo_box_get_active_id(GTK_COMBO_BOX(agentCombo));
-	if (!agent_email) {
-		agent_email = "";
+	const gint ticketId = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
+	const char *priorityId = gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo));
+	const char *stateId = gtk_combo_box_get_active_id(GTK_COMBO_BOX(stateCombo));
+	const char *agentEmail = gtk_combo_box_get_active_id(GTK_COMBO_BOX(agentCombo));
+	if (!agentEmail) {
+		agentEmail = "";
 	}
-
-	const gint ticket_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
-	const char *creator = g_object_get_data(G_OBJECT(dialog), "ticket-creator"); // TODO: Check if this value is useful?
 
 	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 	yyjson_mut_val *root = yyjson_mut_obj(doc);
 	yyjson_mut_doc_set_root(doc, root);
-
 
 	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(doc, root, "method", "updateTicket");
 	yyjson_mut_obj_add_int(doc, root, "id", 2);
 
 	yyjson_mut_val *params = yyjson_mut_obj(doc);
-	yyjson_mut_obj_add_int(doc, params, "id", ticket_id);
-	yyjson_mut_obj_add_int(doc, params, "priority", atoi(priority_id));
-	yyjson_mut_obj_add_int(doc, params, "state", atoi(state_id));
-	yyjson_mut_obj_add_str(doc, params, "assignedAgent", agent_email);
+	yyjson_mut_obj_add_int(doc, params, "id", ticketId);
+	yyjson_mut_obj_add_int(doc, params, "priority", atoi(priorityId));
+	yyjson_mut_obj_add_int(doc, params, "state", atoi(stateId));
+	yyjson_mut_obj_add_str(doc, params, "assignedAgent", agentEmail);
 	yyjson_mut_obj_add_val(doc, root, "params", params);
-
-	// g_free(new_desc); TODO: Re-enable this free after message has been sent
 
 	if (sendJsonRpcMessage(clientFD, doc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante l'aggiornamento del ticket");
 		return;
 	}
 
-	yyjson_doc *resp_doc = NULL;
-	if (receiveJsonRpcMessage(clientFD, &resp_doc) < 0) {
+	yyjson_doc *responseDoc = NULL;
+	if (receiveJsonRpcMessage(clientFD, &responseDoc) < 0) {
 		showErrorDialog(mainWindow, "Errore di rete durante il recupero degli agent");
 		yyjson_mut_doc_free(doc);
 		return;
 	}
 
-	yyjson_val *resp_root = yyjson_doc_get_root(resp_doc);
-	yyjson_val *error = yyjson_obj_get(resp_root, "error");
+	yyjson_val *responseRoot = yyjson_doc_get_root(responseDoc);
+	yyjson_val *error = yyjson_obj_get(responseRoot, "error");
 
 	if (error) {
 		gtk_label_set_text(errorLabel, yyjson_get_str(yyjson_obj_get(error, "message")));
