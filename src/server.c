@@ -1,17 +1,19 @@
-#include <stdio.h>
-#include <stdarg.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 #include <time.h>
-#include <errno.h>
-#include "../include/models.h"
+#include <unistd.h>
 #include "../include/db_utils.h"
+#include "../include/models.h"
+#include "../include/network_utils.h"
+#include "../include/yyjson.h"
 
 #define DEFAULT_PROTOCOL 0
 #define MAX_PENDING_CONNECTIONS 100
@@ -24,7 +26,7 @@ int serverFD;
  * @param fmt Format string containing format specifiers (e.g. "s", "d")
  * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
  */
-static void log_message(const char *level, const char *fmt, ...) {
+static void logMessage(const char *level, const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
 	struct tm *tm = localtime(&now);
@@ -43,7 +45,7 @@ static void log_message(const char *level, const char *fmt, ...) {
  * @param fmt Format string containing format specifiers (e.g. "s", "d")
  * @param ... Additional arguments that correspond to and replace the format specifiers in the format string
  */
-static void log_error(const char *fmt, ...) {
+static void logError(const char *fmt, ...) {
 	char ts[20];
 	const time_t now = time(NULL);
 	struct tm *tm = localtime(&now);
@@ -60,161 +62,150 @@ static void log_error(const char *fmt, ...) {
 /**
  * @brief Handle client request on a connected socket in a loop until disconnection or error
  * @param socket File descriptor of the connected client socket
- * 
- * Command IDs handled:
- * 
- * - 1: Login (expects email and password payload)
- * 
- * - 2: Create ticket (expects Ticket struct payload)
- * 
- * - 3: Get tickets (expects email string payload)
- * 
- * - 4: Update ticket (expects Ticket struct payload)
- * 
- * - 5: Get users (expects Role enum payload)
  */
 void handleClient(const int socket) {
-	log_message("INFO", "Client handler started (fd=%d)", socket);
+	logMessage("INFO", "Client handler started (fd=%d)", socket);
 
 	while (1) {
-		ResponseHeader res;
-		RequestHeader req;
-		const ssize_t bytesRead = read(socket, &req, sizeof(req));
-
-		if (bytesRead == 0) {
-			log_message("INFO", "Client fd=%d disconnected", socket);
+		yyjson_doc *reqDoc = NULL;
+		if (receiveJsonRpcMessage(socket, &reqDoc) != 0) {
+			logMessage("INFO", "Client fd=%d disconnected or read error", socket);
 			break;
 		}
 
-		if (bytesRead < 0) {
-			log_error("Failed to read header from fd=%d", socket);
-			break;
+		yyjson_val *root = yyjson_doc_get_root(reqDoc);
+		yyjson_val *methodVal = yyjson_obj_get(root, "method");
+		yyjson_val *idVal = yyjson_obj_get(root, "id");
+		yyjson_val *paramsVal = yyjson_obj_get(root, "params");
+
+		if (!yyjson_is_str(methodVal)) {
+			logError("Invalid request: missing method");
+			yyjson_doc_free(reqDoc);
+			continue;
 		}
 
-		const uint16_t cmd = ntohs(req.commandId);
-		const uint32_t payloadSize = ntohl(req.payloadSize);
-		log_message("INFO", "Received cmd=%u payloadSize=%u on fd=%d", cmd, payloadSize, socket);
+		const char *method = yyjson_get_str(methodVal);
+		int requestId = yyjson_is_int(idVal) ? (int) yyjson_get_int(idVal) : 0;
 
-		switch (cmd) {
-			case 1:
-			{
-				if (payloadSize == 0) {
-					log_error("Empty login payload from fd=%d", socket);
-					break;
-				}
-				char *buf = malloc(payloadSize + 1);
-				if (read(socket, buf, payloadSize) != (ssize_t) payloadSize) {
-					log_error("Failed to read login payload from fd=%d", socket);
-					break;
-				}
-				buf[payloadSize] = '\0';
+		logMessage("INFO", "Received method=%s id=%d", method, requestId);
 
-				const char *email = strtok(buf, "\n");
-				const char *password = strtok(NULL, "\n");
-				User dbUser = getUser(email);
+		yyjson_mut_doc *resDoc = yyjson_mut_doc_new(NULL);
+		yyjson_mut_val *resRoot = yyjson_mut_obj(resDoc);
+		yyjson_mut_doc_set_root(resDoc, resRoot);
 
-				if (email && password && strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0) {
-					log_message("INFO", "User '%s' authenticated", email);
-					res = (ResponseHeader){htons(200), htonl(sizeof(dbUser)), "Autenticazione avvenuta"};
-					write(socket, &res, sizeof(res));
-					write(socket, &dbUser, sizeof(dbUser));
-				} else {
-					log_message("WARN", "Authentication failed for '%s'", email);
-					res = (ResponseHeader){htons(401), htonl(0), "Autenticazione fallita"};
-					write(socket, &res, sizeof(res));
-				}
-				free(buf);
-				break;
+		yyjson_mut_obj_add_str(resDoc, resRoot, "jsonrpc", "2.0");
+		yyjson_mut_obj_add_int(resDoc, resRoot, "id", requestId);
+
+		if (strcmp(method, "login") == 0) {
+			const char *email = yyjson_get_str(yyjson_obj_get(paramsVal, "email"));
+			const char *password = yyjson_get_str(yyjson_obj_get(paramsVal, "password"));
+			User dbUser = getUser(email);
+
+			if (email && password && strcmp(email, dbUser.email) == 0 && strcmp(password, dbUser.password) == 0) {
+				logMessage("INFO", "User '%s' authenticated", email);
+				yyjson_mut_val *result = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_str(resDoc, result, "name", dbUser.name);
+				yyjson_mut_obj_add_str(resDoc, result, "surname", dbUser.surname);
+				yyjson_mut_obj_add_str(resDoc, result, "email", dbUser.email);
+				yyjson_mut_obj_add_int(resDoc, result, "role", dbUser.role);
+				yyjson_mut_obj_add_val(resDoc, resRoot, "result", result);
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32401);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Autenticazione fallita");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 			}
 
-			case 2:
-			{
-				Ticket ticket;
-				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
-					log_error("Failed to read new ticket payload");
-					res = (ResponseHeader){htons(500), htonl(0), "Errore nella creazione del ticket"};
-				} else {
-					const int rc = createTicket(&ticket);
-					if (rc == SQLITE_OK) {
-						log_message("INFO", "User %s created a ticket successfully", ticket.creator);
-						res = (ResponseHeader){htons(201), htonl(0), "Ticket creato con successo"};
-					} else {
-						log_error("DB error while creating ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(500), htonl(0), "Errore nella creazione del ticket"};
-					}
+		} else if (strcmp(method, "createTicket") == 0) {
+			Ticket ticket = {0};
+
+			strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(paramsVal, "creator")), sizeof(ticket.creator) - 1);
+			strncpy(ticket.title, yyjson_get_str(yyjson_obj_get(paramsVal, "title")), sizeof(ticket.title) - 1);
+			strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(paramsVal, "description")), sizeof(ticket.description) - 1);
+			ticket.creationDate = yyjson_get_uint(yyjson_obj_get(paramsVal, "creationDate"));
+			ticket.state = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "state"));
+
+			int rc = createTicket(&ticket);
+			if (rc == SQLITE_OK) {
+				yyjson_mut_obj_add_str(resDoc, resRoot, "result", "Ticket creato con successo");
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32500);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nella creazione del ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
+			}
+		} else if (strcmp(method, "getTickets") == 0) {
+			const char *email = yyjson_get_str(yyjson_obj_get(paramsVal, "email"));
+			Ticket *tickets = NULL;
+			int count = getTicketList(email, &tickets);
+			if (count > 0) {
+				yyjson_mut_val *arr = yyjson_mut_arr(resDoc);
+				for (int i = 0; i < count; i++) {
+					yyjson_mut_val *jsonTicket = yyjson_mut_obj(resDoc);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "id", tickets[i].id);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "creator", tickets[i].creator);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "title", tickets[i].title);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "description", tickets[i].description);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "state", tickets[i].state);
+					yyjson_mut_obj_add_int(resDoc, jsonTicket, "priority", tickets[i].priority);
+					yyjson_mut_obj_add_uint(resDoc, jsonTicket, "creationDate", (uint64_t) tickets[i].creationDate);
+					yyjson_mut_obj_add_str(resDoc, jsonTicket, "assignedAgent", tickets[i].assignedAgent);
+					yyjson_mut_arr_add_val(arr, jsonTicket);
 				}
-				write(socket, &res, sizeof(res));
-				break;
+				yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32404);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nel recupero dei ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 			}
 
-			case 3:
-			{
-				char email[64] = {0};
-				if (read(socket, email, sizeof(email)) <= 0) {
-					log_error("Failed to read get-tickets email");
-					res = (ResponseHeader){htons(404), htonl(0), "Errore nel recupero dei ticket"};
-					write(socket, &res, sizeof(res));
-					break;
-				} else {
-					Ticket *tickets = NULL;
-					const int count = getTicketList(email, &tickets);
-					log_message("INFO", "Returning %d tickets for '%s'", count, email);
-					res = (ResponseHeader){htons(200), htonl(count * sizeof(Ticket)), "Lista dei ticket"};
-					write(socket, &res, sizeof(res));
-					if (count > 0) {
-						write(socket, tickets, count * sizeof(Ticket));
-					}
-					free(tickets);
-				}
-				break;
-			}
-			case 4:
-			{
-				Ticket ticket;
-				if (read(socket, &ticket, sizeof(ticket)) != (ssize_t) sizeof(ticket)) {
-					log_error("Failed to read update-ticket payload");
-					res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
-				} else {
-					const int rc = updateTicket(&ticket);
-					if (rc == SQLITE_OK) {
-						log_message("INFO", "Updated ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(200), htonl(0), "Ticket aggiornato con successo"};
-					} else {
-						log_error("DB error updating ticket id=%d", ticket.id);
-						res = (ResponseHeader){htons(500), htonl(0), "Errore nell'aggiornamento del ticket"};
-					}
-				}
-				write(socket, &res, sizeof(res));
-				break;
-			}
+		} else if (strcmp(method, "updateTicket") == 0) {
+			Ticket ticket;
+			ticket.id = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "id"));
+			ticket.priority = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "priority"));
+			ticket.state = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "state"));
+			strncpy(ticket.assignedAgent, yyjson_get_str(yyjson_obj_get(paramsVal, "assignedAgent")), sizeof(ticket.assignedAgent) - 1);
 
-			case 5:
-			{
-				enum Role role;
-				if (read(socket, &role, sizeof(role)) != (ssize_t) sizeof(role)) {
-					log_error("Failed to read get-users role");
-					res = (ResponseHeader){htons(404), htonl(0), "Errore nel recupero degli utenti"};
-				} else {
-					User *users = NULL;
-					const int count = getUserList(role, &users);
-					log_message("INFO", "Returning %d users for role=%d", count, role);
-					res = (ResponseHeader){htons(200), htonl(count * sizeof(User)), "Lista degli utenti"};
-					write(socket, &res, sizeof(res));
-					if (count > 0) {
-						write(socket, users, count * sizeof(User));
-					}
-					free(users);
-				}
-				break;
+			int rc = updateTicket(&ticket);
+			if (rc == SQLITE_OK) {
+				yyjson_mut_obj_add_str(resDoc, resRoot, "result", "Ticket aggiornato con successo");
+			} else {
+				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32500);
+				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nell'aggiornamento del ticket");
+				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 			}
+		} else if (strcmp(method, "getUsers") == 0) {
+			enum Role role = (enum Role) yyjson_get_int(yyjson_obj_get(paramsVal, "role"));
+			User *users = NULL;
+			int count = getUserList(role, &users);
 
-			default:
-				log_message("WARN", "Unknown command ID %u", cmd);
-				break;
+			yyjson_mut_val *arr = yyjson_mut_arr(resDoc);
+			for (int i = 0; i < count; i++) {
+				yyjson_mut_val *u = yyjson_mut_obj(resDoc);
+				yyjson_mut_obj_add_str(resDoc, u, "email", users[i].email);
+				yyjson_mut_obj_add_str(resDoc, u, "name", users[i].name);
+				yyjson_mut_obj_add_int(resDoc, u, "role", users[i].role);
+				yyjson_mut_arr_add_val(arr, u);
+			}
+			yyjson_mut_obj_add_val(resDoc, resRoot, "result", arr);
+		} else {
+			yyjson_mut_val *err = yyjson_mut_obj(resDoc);
+			yyjson_mut_obj_add_int(resDoc, err, "code", -32601);
+			yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nel recupero degli utenti");
+			yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 		}
+
+		if (sendJsonRpcMessage(socket, resDoc) < 0) {
+			logError("Error while sending response to client");
+		}
+
+		yyjson_mut_doc_free(resDoc);
+		yyjson_doc_free(reqDoc);
 	}
 
-	log_message("INFO", "Closing client socket fd=%d", socket);
+	logMessage("INFO", "Closing client socket fd=%d", socket);
 	close(socket);
 }
 
@@ -228,13 +219,13 @@ static void terminateServer() {
 }
 
 int main() {
-	log_message("INFO", "Starting server...");
+	logMessage("INFO", "Starting server...");
 	createDb();
 	createTables();
 
 	serverFD = socket(AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
 	if (serverFD < 0) {
-		log_error("socket()");
+		logError("socket()");
 		return 1;
 	}
 
@@ -245,36 +236,36 @@ int main() {
 
 	const int yes = 1;
 	if (setsockopt(serverFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
-		log_error("setsockopt(SO_REUSEADDR)");
+		logError("setsockopt(SO_REUSEADDR)");
 		close(serverFD);
 		return 1;
 	}
 
 	if (bind(serverFD, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		log_error("bind()");
+		logError("bind()");
 		return 1;
 	}
 	if (listen(serverFD, MAX_PENDING_CONNECTIONS) < 0) {
-		log_error("listen()");
+		logError("listen()");
 		return 1;
 	}
-	log_message("INFO", "Server listening on 127.0.0.1:1420");
+	logMessage("INFO", "Server listening on 127.0.0.1:1420");
 
 	signal(SIGCHLD, SIG_IGN);
 	signal(SIGINT, terminateServer);
 	signal(SIGTERM, terminateServer);
 
 	while (1) {
-		struct sockaddr_in cli_addr;
-		socklen_t len = sizeof(cli_addr);
-		const int clientFD = accept(serverFD, (struct sockaddr *) &cli_addr, &len);
+		struct sockaddr_in cliAddr;
+		socklen_t len = sizeof(cliAddr);
+		const int clientFD = accept(serverFD, (struct sockaddr *) &cliAddr, &len);
 		if (clientFD < 0) {
-			log_error("accept()");
+			logError("accept()");
 			continue;
 		}
 		char ip[INET_ADDRSTRLEN];
-		inet_ntop(AF_INET, &cli_addr.sin_addr, ip, sizeof(ip));
-		log_message("INFO", "New connection from %s:%d (fd=%d)", ip, ntohs(cli_addr.sin_port), clientFD);
+		inet_ntop(AF_INET, &cliAddr.sin_addr, ip, sizeof(ip));
+		logMessage("INFO", "New connection from %s:%d (fd=%d)", ip, ntohs(cliAddr.sin_port), clientFD);
 
 		if (fork() == 0) {
 			close(serverFD);

@@ -1,22 +1,28 @@
-#include <stdio.h>
+#include <gtk/gtk.h>
+#include <netinet/in.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <gtk/gtk.h>
-#include "../include/models.h"
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "../include/gui.h"
+#include "../include/models.h"
+#include "../include/network_utils.h"
+#include "../include/yyjson.h"
 
 #define DEFAULT_PROTOCOL 0
 
 /**
- * @brief Callback for the login window delete event; close the client socket and terminate the GTK main loop
- * @param widget Pointer to the GtkWidget receiving the the event (the login window) - not used
+ * @brief Callback for the login window delete event; close the client socket
+ * and terminate the GTK main loop
+ * @param widget Pointer to the GtkWidget receiving the the event (the login
+ * window) - not used
  * @param event Pointer to the GdkEvent triggering the delete event - not used
- * @param user_data Pointer to user data passed during signal connection - not used
+ * @param user_data Pointer to user data passed during signal connection - not
+ * used
  * @returns FALSE
  */
 gboolean onLoginWindowDeleteEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
@@ -67,8 +73,7 @@ int main(int argc, char *argv[]) {
 	do {
 		result = connect(clientFD, serverSockAddrPtr, serverLen);
 		printf("Non connesso...\n");
-		if (result == -1)
-			sleep(1);
+		if (result == -1) sleep(1);
 	} while (result == -1);
 	printf("Connesso\n");
 

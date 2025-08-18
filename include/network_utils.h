@@ -1,8 +1,9 @@
 #ifndef NETWORK_UTILS_H
 #define NETWORK_UTILS_H
 #include "models.h"
+#include "yyjson.h"
 
-int sendRequest(const int socket, const RequestHeader *req, const void *payload);
+int sendJsonRpcMessage(int sock, yyjson_mut_doc *doc);
 
-int receiveResponse(const int socket, const ResponseHeader *resp, const void *payloadBuffer);
-#endif // NETWORK_UTILS_H
+int receiveJsonRpcMessage(int sock, yyjson_doc **outDoc);
+#endif	// NETWORK_UTILS_H

@@ -19,7 +19,7 @@ I client scelgono cosa fare mediante interfaccia grafica.
 
 ### Agenti
 
-- assegnare ticket ad agenti (c'è un super agente che assegna i ticket agli altri)
+- assegnare ticket ad agenti (c'è un super agente che assegna i ticket agli altri agenti)
 - visualizzano tutti i ticket
 - modificano lo stato e la priorità dei loro ticket
 
@@ -37,138 +37,252 @@ In particolare deve modificare il database in seguito a:
 - gestione di ticket da parte degli agenti:
   - inserisce nel DB le modifiche effettuate ai ticket
 
- * The server handles the following commands:
+* Il server gestisce i seguenti comandi:
  * 1) login
- * 2) create ticket
- * 3) get ticket
- * 4) update ticket
- *
- * Each command has a specific payload structure and response format.
- *
- * Command structure:
- * RequestHeader(commandId, payloadSize)
- * Payload (depends on command)
- *
- * Response structure:
- * ResponseHeader(statusCode, payloadSize, message)
+ * 2) crea ticket
+ * 3) ottieni ticket
+ * 4) aggiorna ticket
+ * 5) ottieni utenti
+ 
+ Ogni comando ha una struttura specifica del payload e un formato di risposta: utilizziamo il protocollo JSON-RPC. Esempio dalla documentazione:
+ ```
+--> data sent to Server
+<-- data sent to Client
+ ```
+ ```JSON
+--> {"jsonrpc": "2.0", "method": "subtract", "params": {"subtrahend": 23, "minuend": 42}, "id": 3}
+<-- {"jsonrpc": "2.0", "result": 19, "id": 3}
 
-1) login: payload = email + password
-    Success: ResponseHeader(200, msg="Autenticazione avvenuta", payloadSize=0)
-    Failure: ResponseHeader(401, msg="Autenticazione fallita", payloadSize=0)
-
-2) create ticket: payload = Ticket
-    Success: ResponseHeader(201, msg="Ticket creato con successo", payloadSize=0)
-    Failure: ResponseHeader(500, msg="Errore nella creazione del ticket", payloadSize=0)
-
-3) get tickets: payload = User ID
-    Success: ResponseHeader(200, msg="Lista dei ticket", payloadSize=sizeof(Ticket)*n)
-    Failure: ResponseHeader(404, msg="Errore nel recupero dei ticket", payload)Size=0)
-
-4) update ticket: payload = Ticket
-    Success: ResponseHeader(200, msg="Ticket aggiornato con successo", payloadSize=0)
-    Failure: ResponseHeader(500, msg="Errore nell'aggiornamento del ticket", payloadSize=0)
-*/
-
-# Comunicazione Client-Server
-
-typedef struct {
-    uint16_t cmd;       // comando, es. 1 = LOGIN, 2 = SEND_DATA...
-    uint32_t length;    // dimensione del payload (network byte order)
-}__attribute__((packed)) MessageHeader;
-
-Per consentire la comunicazione tra client e server 
-
-L'uso di `__attribute__((packed))` in C è una direttiva del compilatore 
-(specifica per GCC e compatibili) che **disabilita l’allineamento automatico** dei membri in una `struct`. Serve per dire al compilatore:
-> "Non aggiungere *padding* tra i campi della struttura, memorizzali tutti 
-
----
-
-### ✅ Esempio concreto
-
-```c
-typedef struct {
-    uint16_t cmd;     // 2 byte
-    uint32_t length;  // 4 byte
-} __attribute__((packed)) MessageHeader;
+--> {"jsonrpc": "2.0", "method": "subtract", "params": {"minuend": 42, "subtrahend": 23}, "id": 4}
+<-- {"jsonrpc": "2.0", "result": 19, "id": 4}
 ```
 
-Normalmente, senza `packed`, il compilatore potrebbe introdurre **2 byte di padding** tra `cmd` e `length`, per allineare `length` su un indirizzo multiplo di 4 byte.
+1. Login
 
-#### Senza `packed`
+* Payload = user email + password
 
+```JSON
+--> {
+  "jsonrpc": "2.0",
+  "method": "login",
+  "params": {
+    "email": "user@example.com",
+    "password": "secret"
+  },
+  "id": 1
+}
+
+// success
+<-- {
+  "jsonrpc": "2.0",
+  "result": {
+    "name":"",
+    "surname":"",
+    "email":"",
+    "password":"",
+    "role": 2
+  },
+  "id": 1
+}
+
+// failure
+<-- {
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32401,
+    "message": "Autenticazione fallita"
+  },
+  "id": 1
+}
 ```
-Offset:
-cmd     -> 0–1   (2 byte)
-padding -> 2–3   (2 byte)
-length  -> 4–7   (4 byte)
-sizeof(MessageHeader) = 8
+2. Crea ticket
+
+* Payload = Ticket
+
+```JSON
+--> {
+  "jsonrpc": "2.0",
+  "method": "createTicket",
+  "params": {
+    "ticket": {
+      "id": 1,
+      "title": "Titolo esempio",
+      "description": "Dettagli sul problema",
+      "creationDate": 1111111111,
+      "priority": 0,
+      "state": 0,
+      "creator": "",
+      "assignedAgent": ""
+    }
+  },
+  "id": 2
+}
+
+// successo
+<-- {
+  "jsonrpc": "2.0",
+  "result": {
+    "message": "Ticket creato con successo"
+  },
+  "id": 2
+}
+
+// fallimento
+<-- {
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32500,
+    "message": "Errore nella creazione del ticket"
+  },
+  "id": 2
+}
 ```
 
-#### Con `__attribute__((packed))`
+3. Ottieni ticket
 
-```
-Offset:
-cmd     -> 0–1
-length  -> 2–5
-sizeof(MessageHeader) = 6
-```
-## 🔹 Cos'è l’allineamento?
+* Payload = user email
 
-L'*allineamento* significa che una variabile deve essere memorizzata in memoria a un indirizzo che è un multiplo della sua dimensione.
+```JSON
+--> {
+  "jsonrpc": "2.0",
+  "method": "getTickets",
+  "params": {
+    "email": "test@example.com"
+  },
+  "id": 3
+}
 
-Esempio:
+// successo
+<-- {
+  "jsonrpc": "2.0",
+  "result": {
+    "message": "Lista dei ticket",
+    "payloadSize": 2,
+    "tickets": [
+      { 
+      "id": 1, 
+      "title": "Primo Ticket",
+      "description": "",
+      "creationDate": 11111111,
+      "priority": 0,
+      "state": 1, 
+      "creator": "",
+      "assignedAgent": ""
+      },
+      { 
+      "id": 2, 
+      "title": "Secondo Ticket",
+      "description": "",
+      "creationDate": 22222222,
+      "priority": 2,
+      "state": 3, 
+      "creator": "",
+      "assignedAgent": ""
+      }
+    ]
+  },
+  "id": 3
+}
 
-* `uint32_t` (4 byte) è **allineato** se si trova a un indirizzo divisibile per 4: es. `0x1000`, `0x1004`, `0x1008`, ecc.
-* `uint16_t` (2 byte) richiede allineamento a 2 byte: `0x1000`, `0x1002`, `0x1004`, ecc.
-
----
-
-## 🔹 Perché l’allineamento è importante?
-
-1. **Prestazioni:**
-   CPU moderne sono ottimizzate per leggere valori allineati.
-   Un `uint32_t` allineato a 4 byte può essere letto in un solo ciclo.
-   Se non è allineato, il processore può:
-
-   * fare più letture per ricomporre il dato,
-   * generare una **eccezione hardware** (su architetture come ARM o SPARC).
-
-2. **Portabilità e correttezza:**
-   Su alcune architetture, accedere a dati non allineati causa **crash (SIGBUS)**.
-   Quindi il compilatore inserisce *padding* per prevenire questi accessi non validi.
-
----
-
-## 🔹 Esempio pratico
-
-```c
-typedef struct {
-    char c;        // 1 byte
-    uint32_t i;    // 4 byte
-} MyStruct;
-```
-
-🧠 Senza padding:
-
-```
-Offset:
-c -> 0
-i -> 1–4 ❌ non allineato su 4 byte!
-```
-
-🛠 Il compilatore inserisce **3 byte di padding** dopo `c`:
-
-```
-Offset:
-c         -> 0
-padding   -> 1–3
-i         -> 4–7 ✅ allineato
+// fallimento
+<-- {
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32404,
+    "message": "Errore nel recupero dei ticket"
+  },
+  "id": 3
+}
 ```
 
-`sizeof(MyStruct) = 8`
+4. Aggiorna ticket
 
----
+* Payload = Ticket
+
+```JSON
+--> {
+  "jsonrpc": "2.0",
+  "method": "updateTicket",
+  "params": {
+    "ticket": {
+      "id": 1,
+      "title": "Titolo aggiornato",
+      "status": "in-progress"
+    }
+  },
+  "id": 4
+}
+
+// successo
+<-- {
+  "jsonrpc": "2.0",
+  "result": {
+    "message": "Ticket aggiornato con successo"
+  },
+  "id": 4
+}
+
+// fallimento
+<-- {
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32500,
+    "message": "Errore nell'aggiornamento del ticket"
+  },
+  "id": 4
+}
+```
+
+5. Ottieni utenti
+
+* Payload = ruolo
+
+```JSON
+--> {
+  "jsonrpc": "2.0",
+  "method": "getUsers",
+  "params": {
+    "role": 2
+  },
+  "id": 5
+}
+
+// successo
+<-- {
+  "jsonrpc": "2.0",
+  "result": {
+    "message": "Lista utenti",
+    "payloadSize": 2,
+    "users": [
+      { 
+        "name":"Mario",
+        "surname":"Rossi",
+        "email":"mario.rossi@example.com",
+        "password":"secret2",
+        "role": 2
+      },
+      { 
+        "name":"Anna",
+        "surname":"Bianchi",
+        "email":"anna.bianchi@example.com",
+        "password":"secret4",
+        "role": 2
+      }
+    ]
+  },
+  "id": 5
+}
+
+// fallimento
+<-- {
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32601,
+    "message": "Errore nel recupero degli utenti"
+  },
+  "id": 5
+}
+```
 
 # Strutture dati
 
