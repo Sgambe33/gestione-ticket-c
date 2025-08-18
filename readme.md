@@ -35,12 +35,12 @@ In particolare deve modificare il database in seguito a:
 - gestione di ticket da parte degli agenti:
   - inserisce nel DB le modifiche effettuate ai ticket
 
-* Il server gestisce i seguenti comandi:
- * 1) login
- * 2) crea ticket
- * 3) ottieni ticket
- * 4) aggiorna ticket
- * 5) ottieni utenti
+* Il server gestisce i seguenti comandi (1-5 sono i codici dei comandi):
+   1. login
+   2. crea ticket
+   3. ottieni ticket
+   4. aggiorna ticket
+   5. ottieni utenti
  
  Ogni comando ha una struttura specifica del payload e un formato di risposta: utilizziamo il protocollo JSON-RPC. Esempio dalla documentazione:
  ```
