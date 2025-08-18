@@ -454,10 +454,11 @@ void initMainWindow(GtkWidget *window, gpointer userData) {
 	}
 
 	filterModel = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(store), NULL));
-	gtk_tree_model_filter_set_visible_func(GTK_TREE_MODEL_FILTER(filterModel), ticketFilterFunction, builder, NULL);
+	gtk_tree_model_filter_set_visible_func(filterModel, ticketFilterFunction, builder, NULL);
 
 	GtkTreeModel *sortModel = gtk_tree_model_sort_new_with_model(GTK_TREE_MODEL(filterModel));
 	gtk_tree_view_set_model(GTK_TREE_VIEW(ticketTreeView), sortModel);
+	g_object_set_data(G_OBJECT(ticketTreeView), "sort_model", sortModel);
 
 	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(sortModel);
 	gtk_tree_sortable_set_sort_column_id(sortable, COL_PRIORITY, GTK_SORT_ASCENDING);
@@ -600,11 +601,9 @@ void onSearchButtonClicked(GtkWidget *widget, gpointer userData) {
  */
 void updateTicketFilter(GtkWidget *widget, gpointer userData) {
 	GtkWidget *noResultLabel = g_object_get_data(G_OBJECT(ticketTreeView), "no_tickets_found_label");
-	GtkTreeModelFilter *filter = GTK_TREE_MODEL_FILTER(gtk_tree_view_get_model(ticketTreeView));
-	gtk_tree_model_filter_refilter(filter);
-
-	GtkTreeModel *filterModel = GTK_TREE_MODEL(filter);
-	const gint rowsCount = gtk_tree_model_iter_n_children(filterModel, NULL);
+	gtk_tree_model_filter_refilter(filterModel);
+	GtkTreeModel *sortModel = GTK_TREE_MODEL(g_object_get_data(G_OBJECT(ticketTreeView), "sort_model"));
+	const gint rowsCount = gtk_tree_model_iter_n_children(sortModel, NULL);
 
 	if (rowsCount == 0) {
 		gtk_widget_show(noResultLabel);
@@ -811,7 +810,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 		} else {
 			gtk_combo_box_set_active(GTK_COMBO_BOX(agentCombobox), -1);
 		}
-
 	} else {
 		gtk_widget_set_sensitive(agentCombobox, 0);
 
