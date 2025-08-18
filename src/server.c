@@ -122,8 +122,8 @@ void handleClient(const int socket) {
 			strncpy(ticket.creator, yyjson_get_str(yyjson_obj_get(paramsVal, "creator")), sizeof(ticket.creator) - 1);
 			strncpy(ticket.title, yyjson_get_str(yyjson_obj_get(paramsVal, "title")), sizeof(ticket.title) - 1);
 			strncpy(ticket.description, yyjson_get_str(yyjson_obj_get(paramsVal, "description")), sizeof(ticket.description) - 1);
-			ticket.creationDate = yyjson_get_uint(yyjson_obj_get(paramsVal, "creationDate"));
-			ticket.state = (int) yyjson_get_int(yyjson_obj_get(paramsVal, "state"));
+			ticket.creationDate = (time_t) yyjson_get_uint(yyjson_obj_get(paramsVal, "creationDate"));
+			ticket.state = yyjson_get_int(yyjson_obj_get(paramsVal, "state"));
 
 			int rc = createTicket(&ticket);
 			if (rc == SQLITE_OK) {

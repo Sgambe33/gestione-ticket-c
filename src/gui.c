@@ -271,8 +271,6 @@ void onSaveTicketButtonClicked(GtkWidget *widget, gpointer userData) {
 		return;
 	}
 
-	// TODO: Declare request format as global variable to reuse it?
-
 	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 	yyjson_mut_val *root = yyjson_mut_obj(doc);
 	yyjson_mut_doc_set_root(doc, root);
@@ -518,10 +516,8 @@ void refreshTicketList() {
 		yyjson_val *jticket = yyjson_arr_get(result, i);
 		if (!jticket || !yyjson_is_obj(jticket)) continue;
 
-		yyjson_val *v;
-
-		v = yyjson_obj_get(jticket, "id");
-		gint id = v ? (gint) yyjson_get_int(v) : 0;
+		yyjson_val *v = yyjson_obj_get(jticket, "id");
+		const gint id = v ? (gint) yyjson_get_int(v) : 0;
 
 		v = yyjson_obj_get(jticket, "title");
 		const char *title = v ? yyjson_get_str(v) : "";
@@ -530,13 +526,13 @@ void refreshTicketList() {
 		const char *description = v ? yyjson_get_str(v) : "";
 
 		v = yyjson_obj_get(jticket, "creationDate");
-		guint64 creationDate = v ? yyjson_get_uint(v) : 0;
+		const guint64 creationDate = v ? yyjson_get_uint(v) : 0;
 
 		v = yyjson_obj_get(jticket, "priority");
-		int priority = v ? (int) yyjson_get_int(v) : 0;
+		const int priority = v ? (int) yyjson_get_int(v) : 0;
 
 		v = yyjson_obj_get(jticket, "state");
-		int state = v ? (int) yyjson_get_int(v) : 0;
+		const int state = v ? (int) yyjson_get_int(v) : 0;
 
 		v = yyjson_obj_get(jticket, "creator");
 		const char *creator = v ? yyjson_get_str(v) : "";
@@ -761,8 +757,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 	if (currentUser.role == SUPER_AGENT) {
 		gtk_widget_set_sensitive(agentCombobox, 1);
 
-		GtkTreeIter agentIter;
-
 		yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
 		yyjson_mut_val *root = yyjson_mut_obj(doc);
 		yyjson_mut_doc_set_root(doc, root);
@@ -800,7 +794,6 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 			}
 			yyjson_val *v = yyjson_obj_get(juser, "email");
 			const char *email = v && yyjson_is_str(v) ? yyjson_get_str(v) : "";
-			GtkTreeIter iter;
 			gtk_list_store_append(agentListStore, &iter);
 			gtk_list_store_set(agentListStore, &iter, 0, email, -1);
 		}
@@ -858,17 +851,10 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData) {
 	GtkBuilder *builder = GTK_BUILDER(userData);
 
 	GtkWidget *dialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
-	GtkWidget *titleEntry = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_title_entry"));
-	GtkWidget *descriptionText = GTK_WIDGET(gtk_builder_get_object(builder, "ticket_description_text"));
 	GtkWidget *priorityCombo = GTK_WIDGET(gtk_builder_get_object(builder, "priority_combobox"));
 	GtkWidget *stateCombo = GTK_WIDGET(gtk_builder_get_object(builder, "state_combobox"));
 	GtkWidget *agentCombo = GTK_WIDGET(gtk_builder_get_object(builder, "agent_combobox"));
 	GtkLabel *errorLabel = GTK_LABEL(gtk_builder_get_object(builder, "ticket_edit_error_label"));
-
-	GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionText));
-	GtkTextIter start, end;
-	gtk_text_buffer_get_start_iter(buf, &start);
-	gtk_text_buffer_get_end_iter(buf, &end);
 
 	const gint ticketId = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(dialog), "ticket-id"));
 	const char *priorityId = gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo));
