@@ -19,11 +19,9 @@ I client scelgono cosa fare mediante interfaccia grafica.
 
 ### Agenti
 
-- assegnare ticket ad agenti (c'è un super agente che assegna i ticket agli altri agenti)
+- assegnare ticket ad agenti (lo fa un *super agente*, che può svolgere anche le altre operazioni degli agenti)
 - visualizzano tutti i ticket
 - modificano lo stato e la priorità dei loro ticket
-
-Ci sono anche uno o più super agenti che possono anche assegnare i ticket agli altri agenti
 
 ## Funzionalità server
 
