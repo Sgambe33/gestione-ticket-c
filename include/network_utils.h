@@ -5,5 +5,5 @@
 
 int sendJsonRpcMessage(int sock, yyjson_mut_doc *doc);
 
-int receiveJsonRpcMessage(int sock, yyjson_doc **out_doc);
+int receiveJsonRpcMessage(int sock, yyjson_doc **outDoc);
 #endif	// NETWORK_UTILS_H
