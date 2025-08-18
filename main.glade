@@ -771,7 +771,6 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="max-length">64</property>
-                <property name="primary-icon-name">help-about</property>
               </object>
               <packing>
                 <property name="left-attach">1</property>
