@@ -28,13 +28,13 @@ int createDb() {
  */
 int createTableUser() {
 	const char *sqlUser =
-	        "CREATE TABLE IF NOT EXISTS \"User\" ("
-	        "    \"name\" TEXT NOT NULL, "
-	        "    \"surname\" TEXT NOT NULL, "
-	        "    \"email\" TEXT PRIMARY KEY, "
-	        "    \"password\" TEXT NOT NULL, "
-	        "    \"role\" INTEGER NOT NULL"
-	        ");";
+			"CREATE TABLE IF NOT EXISTS \"User\" ("
+			"    \"name\" TEXT NOT NULL, "
+			"    \"surname\" TEXT NOT NULL, "
+			"    \"email\" TEXT PRIMARY KEY, "
+			"    \"password\" TEXT NOT NULL, "
+			"    \"role\" INTEGER NOT NULL"
+			");";
 
 	commandResult = sqlite3_exec(db, sqlUser, NULL, 0, &errMsg);
 
@@ -52,18 +52,18 @@ int createTableUser() {
  */
 int createTableTicket() {
 	const char *sqlTicket =
-	        "CREATE TABLE IF NOT EXISTS \"Ticket\" (\n"
-	        "    \"id\" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n"
-	        "    \"title\" TEXT NOT NULL,\n"
-	        "    \"description\" TEXT NOT NULL,\n"
-	        "    \"creationDate\" INTEGER NOT NULL,\n"
-	        "    \"priority\" INTEGER NOT NULL,\n"
-	        "    \"state\" INTEGER NOT NULL,\n"
-	        "    \"creator\" TEXT NOT NULL,\n"
-	        "    \"assignedAgent\" TEXT,\n"
-	        "    FOREIGN KEY (\"creator\") REFERENCES \"User\" (\"email\"),\n"
-	        "    FOREIGN KEY (\"assignedAgent\") REFERENCES \"User\" (\"email\")\n"
-	        ");";
+			"CREATE TABLE IF NOT EXISTS \"Ticket\" (\n"
+			"    \"id\" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n"
+			"    \"title\" TEXT NOT NULL,\n"
+			"    \"description\" TEXT NOT NULL,\n"
+			"    \"creationDate\" INTEGER NOT NULL,\n"
+			"    \"priority\" INTEGER NOT NULL,\n"
+			"    \"state\" INTEGER NOT NULL,\n"
+			"    \"creator\" TEXT NOT NULL,\n"
+			"    \"assignedAgent\" TEXT,\n"
+			"    FOREIGN KEY (\"creator\") REFERENCES \"User\" (\"email\"),\n"
+			"    FOREIGN KEY (\"assignedAgent\") REFERENCES \"User\" (\"email\")\n"
+			");";
 
 	commandResult = sqlite3_exec(db, sqlTicket, NULL, 0, &errMsg);
 
@@ -100,9 +100,9 @@ int createTables() {
  */
 int createTicket(Ticket *ticket) {
 	const char *sql =
-	        "INSERT INTO Ticket (title, description, creationDate, priority, "
-	        "state, creator, assignedAgent) "
-	        "VALUES (?, ?, ?, ?, ?, ?, ?);";
+			"INSERT INTO Ticket (title, description, creationDate, priority, "
+			"state, creator, assignedAgent) "
+			"VALUES (?, ?, ?, ?, ?, ?, ?);";
 
 	sqlite3_stmt *stmt;
 	commandResult = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -168,7 +168,12 @@ int getUserList(enum Role role, User **outArray) {
 	int currentUsers = 0;
 	User *array = calloc(currentMaxUsers, sizeof(User));
 
-	const char *sql = "SELECT * FROM User WHERE role = ?;";
+	const char *sql = NULL;
+	if (role == AGENT) {
+		sql = "SELECT * FROM User WHERE role = ? OR role = ?;";
+	} else {
+		sql = "SELECT * FROM User WHERE role = ?;";
+	}
 
 	sqlite3_stmt *stmt;
 	commandResult = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -179,6 +184,9 @@ int getUserList(enum Role role, User **outArray) {
 	}
 
 	sqlite3_bind_int(stmt, 1, role);
+	if (role == AGENT) {
+		sqlite3_bind_int(stmt, 2, SUPER_AGENT);
+	}
 
 	while ((commandResult = sqlite3_step(stmt)) == SQLITE_ROW) {
 		User *u = &array[currentUsers++];
