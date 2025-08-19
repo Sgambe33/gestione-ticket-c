@@ -713,6 +713,27 @@ int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer userDa
 }
 
 /**
+ * @brief Callback for handling changes in the agent combobox
+ * @param combobox Pointer to the GtkComboBox that changed
+ * @param userData Pointer to user data (GtkBuilder)
+ */
+void onAgentComboboxChanged(GtkComboBox *combobox, gpointer userData) {
+	GtkBuilder *builder = GTK_BUILDER(userData);
+	GtkWidget *editTicketDialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
+	GtkWidget *stateCombobox = GTK_WIDGET(gtk_builder_get_object(builder, "state_combobox"));
+	
+	gboolean hadAgentAssigned = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(editTicketDialog), "original-had-agent"));
+	
+	const gchar *selectedAgent = gtk_combo_box_get_active_id(combobox);
+	
+	if (!hadAgentAssigned && selectedAgent && strlen(selectedAgent) > 0) {
+		gchar *assignedStateId = g_strdup_printf("%d", ASSIGNED); 
+		gtk_combo_box_set_active_id(GTK_COMBO_BOX(stateCombobox), assignedStateId);
+		g_free(assignedStateId);
+	}
+}
+
+/**
  * @brief Callback for handling selection of a ticket row in the ticket list
  * @param treeview Pointer to the GtkTreeView containing the ticket rows
  * @param path Pointer to the GtkTreePath of the selected row
@@ -746,6 +767,9 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 
 	g_object_set_data(G_OBJECT(editTicketDialog), "ticket-id", GINT_TO_POINTER(id));
 	g_object_set_data_full(G_OBJECT(editTicketDialog), "ticket-creator", g_strdup(currentUser.email), g_free);
+
+	gboolean hadAgentAssigned = (agent && strlen(agent) > 0);
+	g_object_set_data(G_OBJECT(editTicketDialog), "original-had-agent", GINT_TO_POINTER(hadAgentAssigned));
 
 	gtk_entry_set_text(GTK_ENTRY(titleEntry), title);
 	GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(descriptionTextView));
@@ -803,6 +827,10 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 		} else {
 			gtk_combo_box_set_active(GTK_COMBO_BOX(agentCombobox), -1);
 		}
+
+		g_signal_handlers_disconnect_by_func(agentCombobox, G_CALLBACK(onAgentComboboxChanged), builder);
+		g_signal_connect(agentCombobox, "changed", G_CALLBACK(onAgentComboboxChanged), builder);
+
 	} else {
 		gtk_widget_set_sensitive(agentCombobox, 0);
 
@@ -848,6 +876,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
  * @param userData Pointer to user data passed during signal connection
  */
 void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData) {
+
 	GtkBuilder *builder = GTK_BUILDER(userData);
 
 	GtkWidget *dialog = GTK_WIDGET(gtk_builder_get_object(builder, "edit_ticket_dialog"));
@@ -860,6 +889,7 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData) {
 	const char *priorityId = gtk_combo_box_get_active_id(GTK_COMBO_BOX(priorityCombo));
 	const char *stateId = gtk_combo_box_get_active_id(GTK_COMBO_BOX(stateCombo));
 	const char *agentEmail = gtk_combo_box_get_active_id(GTK_COMBO_BOX(agentCombo));
+
 	if (!agentEmail) {
 		agentEmail = "";
 	}

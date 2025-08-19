@@ -38,6 +38,8 @@ void updateTicketFilter(GtkWidget *widget, gpointer userData);
 
 int ticketFilterFunction(GtkTreeModel *model, GtkTreeIter *iter, gpointer userData);
 
+void onAgentComboboxChanged(GtkComboBox *combobox, gpointer userData);
+
 void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer userData);
 
 void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData);
