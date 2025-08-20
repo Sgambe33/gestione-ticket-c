@@ -172,7 +172,7 @@ void handleClient(const int socket) {
 				yyjson_mut_obj_add_str(resDoc, resRoot, "result", "Ticket aggiornato con successo");
 			} else {
 				yyjson_mut_val *err = yyjson_mut_obj(resDoc);
-				yyjson_mut_obj_add_int(resDoc, err, "code", -32500);
+				yyjson_mut_obj_add_int(resDoc, err, "code", -32501);
 				yyjson_mut_obj_add_str(resDoc, err, "message", "Errore nell'aggiornamento del ticket");
 				yyjson_mut_obj_add_val(resDoc, resRoot, "error", err);
 			}

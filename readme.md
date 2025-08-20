@@ -224,7 +224,7 @@ In particolare deve modificare il database in seguito a:
 <-- {
   "jsonrpc": "2.0",
   "error": {
-    "code": -32500,
+    "code": -32501,
     "message": "Errore nell'aggiornamento del ticket"
   },
   "id": 4
