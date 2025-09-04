@@ -485,7 +485,7 @@ void refreshTicketList() {
 
 	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(doc, root, "method", "getTickets");
-	yyjson_mut_obj_add_int(doc, root, "id", 2);
+	yyjson_mut_obj_add_int(doc, root, "id", 3);
 
 	yyjson_mut_val *params = yyjson_mut_obj(doc);
 	yyjson_mut_obj_add_str(doc, params, "email", currentUser.email);
@@ -787,7 +787,7 @@ void onTicketRowSelected(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewCo
 
 		yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 		yyjson_mut_obj_add_str(doc, root, "method", "getUsers");
-		yyjson_mut_obj_add_int(doc, root, "id", 5);
+		yyjson_mut_obj_add_int(doc, root, "id", 4);
 
 		yyjson_mut_val *params = yyjson_mut_obj(doc);
 		yyjson_mut_obj_add_int(doc, params, "role", AGENT);
@@ -900,7 +900,7 @@ void onSaveEditedTicketButtonClicked(GtkWidget *widget, gpointer userData) {
 
 	yyjson_mut_obj_add_str(doc, root, "jsonrpc", "2.0");
 	yyjson_mut_obj_add_str(doc, root, "method", "updateTicket");
-	yyjson_mut_obj_add_int(doc, root, "id", 2);
+	yyjson_mut_obj_add_int(doc, root, "id", 5);
 
 	yyjson_mut_val *params = yyjson_mut_obj(doc);
 	yyjson_mut_obj_add_int(doc, params, "id", ticketId);
