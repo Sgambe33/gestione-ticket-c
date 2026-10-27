@@ -1,5 +1,4 @@
 <img width="845" height="804" alt="image" src="https://github.com/user-attachments/assets/f19e3f22-cc0f-460c-9726-8196dc1f5e78" />
-<img width="1058" height="528" alt="image" src="https://github.com/user-attachments/assets/ebfa31b8-b7fa-4ebe-ac5e-52e6b5100655" />
 <img width="682" height="792" alt="image" src="https://github.com/user-attachments/assets/4a6967fd-2f46-42bc-b9e0-ab9191751b39" />
 
 # Funzionalità
